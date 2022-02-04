@@ -1,0 +1,565 @@
+*{
+      margin: 0;
+      padding: 0;
+      font-family:Arial, Helvetica, sans-serif;
+    }
+
+
+/*this css for index.html page*/
+
+.navheader{
+  position: sticky;
+  top: 0;
+}
+.side-bar-show{
+  display: grid;
+  grid-template-columns: auto;
+
+}
+.this-is-sidebar{
+  position:fixed;
+  
+
+}
+.this-is-body-part{
+  margin-left: 20%;
+  padding: 0% 1% 1% 1%;
+}
+#Home{
+  
+  display: flex;
+  margin: 1%;
+ 
+  
+}
+#Home a{
+  
+  border: solid #e6e6e6 1px;
+  padding: 1% 1% 1% 1%;
+  text-decoration: none;
+  font-size: 14px;
+  color: #1a1a1a;
+  margin: 1% 2% 2% 0%;
+}
+
+
+/*index.html page css end here*/
+
+/* SHOW COMMON TABLE CSS START FROM HERE */
+
+.common-table{
+  margin-top: 1.8%;
+  width: 100%;
+
+}
+.common-table,.common-table-td{
+  border: 1px  solid #ccc;
+  border-collapse: collapse;
+
+}
+.common-table-th{
+  padding: 1% 1% 1% 1%;
+  font-size: 14px;
+  color:#1a1a1a;
+
+}
+.common-table-td{
+  padding: 0% 1% 0% 1%;
+  color: #4d4d4d;
+  font-size: 14px;
+
+}
+.common-table-td a{
+  text-decoration: none;
+  color:black;
+  font-family: sans-serif;
+  margin-right: 4%;
+  font-size: 12px;
+  padding:2% 4% 2% 4%;
+  border-radius: 4px;
+
+}
+
+.image-div .photo{
+  max-height: 100px;
+  max-width: 100px;
+ 
+} 
+.image-div{
+
+  height: 100px;
+  width: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 4%;
+  
+}
+
+.Edit{
+  background-color: #ff8533;
+ 
+  color:white;
+  
+}
+.Delete{
+  background-color:  #cc0000;
+ 
+  color:white;
+}
+.Show{
+  background-color: #4986cc;
+  color:white;
+}
+.pagination{
+  display: flex;
+  background-color: #0d64ce;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  margin-top:2%;
+  border-radius: 3px;
+}
+.pagination a{
+  text-decoration: none;
+  color: white;
+  font-family:sans-serif;
+  font-size: 20px;
+}
+#college-forms p {
+  padding:1%;
+}
+#college-forms label{
+  display:block;
+  width:100%;
+}
+#college-forms input{
+  width:50%;
+  padding:1%;
+  border-radius:5px;
+  outline:solid white 1px;
+
+}
+.submit_button{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgb(187, 198, 209);
+}
+.submit_button input{
+  background-color:rgb(12 97 182);
+  color:white;
+  font-size:20px;
+  outline:2px solid black;
+
+}
+#id_about_college{
+  height:75px;
+  width:52%;
+  outline:solid gray 1px;
+}
+
+.title-margin{
+  padding: 2% 1% 1% 0%;
+}
+/* END common TABLE CSS HERE */
+
+
+
+
+
+/*this style for Admin login form*/
+.container{
+        height: 100vh;
+        background:#4872a8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+      }
+    .subcontainer{
+      width: 35%;
+    }
+      .Application-name{
+        background-color:#4872a8;
+        padding: 4%;
+        display: flex;
+        justify-content: center;
+        color: white;
+        font-size: 25px;
+        font-family: sans-serif;
+      }
+      
+    .form-controls{
+        padding: 5% 5%;
+        background-color: white;
+        font-family: sans-serif;
+        border-radius: 2px;
+      
+      }
+      
+      .App-input input{
+        width: 95%;
+        font-size: 16px;
+        margin-bottom: 5%;
+        border-radius: 4px;
+        border: solid #cbcdd4 1px;
+        background-color: #f5f6f7;
+        padding: 3%;
+
+        
+        
+      }
+      .App-input input:focus{
+        outline: #d5f1f5 solid 2px;
+        box-shadow: 0px 0px 1px 4px #d5f1f5;
+           
+      }
+
+      #forms-button{
+        padding-top: 4%;
+        display: flex;
+        justify-content:center;
+
+
+      }
+
+      #login-button button {
+        padding: 30% 50%;
+        border-radius: 3px;
+        background-color:#4872a8;
+        border: solid #3690eb 1px;
+        font-weight: bold;
+        color: white;
+        
+      }
+
+
+      @media (max-width: 500px) {
+
+
+      .container{
+        background-color: white;
+        padding: 3%;
+        
+       }
+      .subcontainer{
+        width: 100%;
+        height: 100vh;
+        margin-top:50%;
+       
+        
+        }
+
+
+    }
+/*end form Admin login form*/
+
+
+/*sidebar css start from here*/
+.sidebar{
+       background-color: #f2f2f2;
+        height: 90vh;
+        width: 20vw;
+        font-family:sans-serif;
+        position: relative; 
+       
+        overflow: scroll;
+      }
+.innersidediv{
+  
+  display: flex;
+  justify-content: center;
+  height: auto;
+  align-items: center; 
+  
+
+}
+.profile{
+  padding: 5% 2% 2% 2%;
+  height: 100px;
+  width: 100px;
+}
+.profile img{
+  border-radius: 50%;
+  max-height: 100%;
+  max-width: 100%;
+
+}
+.profilename h6{
+  text-align: center;
+  color:#1a1a1a;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 0% 0% 5% 0%;
+}
+
+.searchbardiv1{
+display: flex;
+padding: 2% 10% 2% 8%;
+
+}
+.searchbardiv1 input{
+width:16vw;
+padding: 3% 0% 3% 6%;
+border-radius: 4px;
+border: #cbcdd4 1px;
+font-size: 12px; 
+background-color: white;
+}
+
+.list{
+padding: 5% 0% 0% 2%;
+width: 20vw;
+list-style: none;
+}
+
+.list a{
+text-decoration: none;
+color:#1a1a1a;
+font-size: 14px;
+
+}
+.list i{
+color:#1a1a1a;
+font-size: 14px;
+padding:2% 5% 5% 6%;
+}
+
+
+/*sidebar css end here*/
+
+/*top navbar css here*/
+.headernavbar{
+      display: flex;
+      background-color: #f2f2f2;
+      justify-content: center;
+
+    } 
+    .navbar{
+      width: 90%;
+      display: flex;
+      justify-content: space-between;
+    
+    }
+    .logodiv{
+      height: 80px;
+      width: 20%;
+      
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+    }
+    .logodiv a i{
+      color: #1a1a1a;
+      
+    }
+    .linksdiv{
+      width: 30%;
+      height: 80px;
+      color: #1a1a1a;
+
+    }
+
+    .list_of_link{
+      list-style: none;
+      display: flex;
+      line-height: 80px;
+      justify-content:space-between;
+
+    }
+
+    .list_of_link a{
+      color: #1a1a1a;
+      font-size: 16px;
+      text-decoration: none;
+    }
+    .list_of_link i{
+      color: #1a1a1a;
+      font-size: 16px;
+      
+    }
+    
+    .linkicoin .tooltip_text{
+      visibility: hidden;
+      background-color: black;
+      color: #fff;
+      width: 7%;
+      border-radius: 5px;
+      text-align: center;
+      text-anchor: none;
+      font-size: 15px;
+      position: absolute;
+      margin-top:50px;
+      margin-left: -50px;
+      
+      
+        
+    }
+    .linkicoin :hover .tooltip_text{
+     color: white;
+     visibility: visible;
+    }
+
+/*top navbar end here*/
+
+
+ /*CATEGORY CSS START HERE*/
+ .category-items{
+ 
+  display: grid;
+  grid-template-columns: 200px 200px 200px 200px;
+  grid-column-gap: 4%;
+  grid-row-gap: 5%;
+  margin-bottom: 4%;
+  
+ }
+ .category-name{
+  padding: 3% 2% 4% 10%;
+  
+ }
+ .category-image{
+   height: 120px;
+   width: auto;
+   background-color:black;
+   border-radius: 5px;
+
+ }
+ .category-image img{
+  max-height:100%;
+  min-width:100%;
+  border-radius: 10px;
+  
+
+}
+ .event-handler{
+  
+  padding: 1% 0% 2% 1%;
+  background-color:#4986cc;
+  border-radius: 3px;
+ }
+ .event-handler a{
+  text-decoration: none;
+  margin: 0% 20% 0% 5%;
+  color: white;
+  font-family: sans-serif;
+  font-size: 12px;
+ }
+ .event-handler a:hover{
+  color: green;
+ }
+
+
+/*ADD NEW CATEGORY BUTTON */
+.add-category{
+  
+  padding: 0% 12% 0% 0%;
+  text-align: right;
+  
+}
+.add-category a{
+
+  text-decoration: none;
+  font-size: 14px;
+  color:#4986cc;
+  
+  font-family:sans-serif ;
+}
+ /*EDIT CATEGORY*/
+
+ .edit-category{
+  background-color:lightgray;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+ }
+ .edit-form{
+  padding: 5%;
+
+ }
+ .form-data{
+  padding: 2%;
+ }
+ .form-data input{
+  height: 50px;
+  width: 50%;
+ }
+
+ /*CATEGORY CSS END HERE*/
+
+/*SHOW COURSE,DEPARTMENT,LOCATION LIST CSS */
+.container_list{
+  
+  padding: 4% 1% 4% 0%;
+}
+.link-style{
+
+  padding: 2% 2% 2% 1%;
+  margin: 0% 1% 1% 0%;
+  text-decoration: none;
+  color:black;
+  
+  border-radius: 5px;
+  display: inline-block;
+  outline: solid gray 1px;
+}
+/*END COURSE,DEPARTMENT,LOCATION  CSS*/
+
+/*SHOW  SINGAL JOB TABLE CSS */
+
+
+.main-table{
+  margin-top: 1.8%;
+  table-layout: fixed;
+  width: 100%;
+  
+}
+.main-table,.main-table-td,.main-table-th{
+  border-collapse: collapse;
+  border: 1px solid gray;
+
+}
+
+.main-table-th{
+  width:15%;
+  text-align: left;
+  padding: 0% 0% 0% 1%;
+  font-size: 12px;
+  
+}
+.main-table-td{
+  padding: 1% 0% 1% 2%;
+  font-size: 12px;
+}
+/*END SINGAL JOB TABLE CSS */
+
+/* POPUP CSS */
+#popup{
+  padding: 2%;
+  font-family:sans-serif;
+  visibility: hidden;
+  border-radius: 1%;
+  position: absolute;
+  transform: translate(40%,40%);
+  background-color:rgb(241, 235, 235);
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+#popup textarea{
+  font-size: 16px;
+  border-radius: 1%;
+  border: solid 1px rgb(0, 0, 5);
+  outline: solid 1px rgb(0, 0, 0);
+
+}
+#delete_button{
+  padding: 2% 3% 2% 3%;
+  background-color: #9c2703;
+  color: white;
+  border-radius: 3%;
+  font-size: 12px;
+  border: white solid 1px;
+ 
+  
+}
+/* popup css */
