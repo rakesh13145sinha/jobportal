@@ -1,3 +1,4 @@
+from distutils.command.upload import upload
 from django.db import models
 
 # Create your models here.
@@ -46,8 +47,6 @@ class MedicalCollege(models.Model):
 	about_college=models.TextField()
 	properties=models.CharField(max_length=30,choices=PROPERTIES,null=True)
 	last_year_rank=models.IntegerField(null=True)
-
-
 	available_course=models.ManyToManyField(Course,related_name='course')
 	entrance_exam=models.ManyToManyField(Examination,related_name='entrance')
 	cutoff=models.IntegerField(null=True)
@@ -64,3 +63,6 @@ class MedicalCollege(models.Model):
 	def __str__(self):
 		return '%s %s %s' %(self.sortname,self.properties,self.state)
 
+class Report(models.Model):
+	name=models.CharField(max_length=20)
+	image=models.ImageField(upload_to='college/image')

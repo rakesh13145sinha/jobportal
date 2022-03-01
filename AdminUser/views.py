@@ -26,14 +26,19 @@ class Admin_Login(APIView):
         try:
             user=User.objects.get(email=data['email'])
         except Exception as msg:
-            return Response({"message":str(msg)},status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message":str(msg),"errors":"invalid email address","status":False},status=status.HTTP_400_BAD_REQUEST)
 
-        user=authenticate(request,username=user.username,password=data['password'])
+        user=authenticate(username=user.username,password=data['password'])
+
         if user is not None:
+            if user.is_superuser:
+
             
-            return Response({"status":True,"user_id":user.id,"username":user.username},status=status.HTTP_200_OK)
+                return Response({"status":True,"user_id":user.id,"username":user.username,"superuser_status":user.is_superuser},status=status.HTTP_200_OK)
+            else:
+                return Response({"status":True,"user_id":user.id,"username":user.username,"superuser_status":user.is_superuser},status=status.HTTP_200_OK)
         else:
-            return Response({"message":"something is wrong contact to developer"})
+            return Response({"message":"password invalid check password and try again","status":False},status=status.HTTP_400_BAD_REQUEST)
 
 """CATEGORY WITH HOW MANY IN  RELATED TO THIS CATEGORY JOB COUNT"""
 class Job_Category_Post(APIView):
@@ -266,7 +271,7 @@ class NewsPagePost(APIView):
         try:
             get_page=Pages.objects.get(id=page)
         except Exception as msg:
-            return Response({"message":str(msg)})
+            return Response({"message":str(msg),"status":False})
 
         data['newspage']=get_page.id
         serializers=NewsPagesSerializers(data=data)
@@ -285,14 +290,14 @@ class PageNewsBookmark(APIView):
             try:
                 pagenews=NewsPages.objects.get(id=pageNews)
             except Exception as e:
-                return Response({"message":"complaint id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"complaint id not found","status":False,"exception":str(e)},status=400)
             try:
                 if pagenews.bookmark.get(id=user.id):
                     pagenews.bookmark.remove(user)
-                    return Response({"bookmark_status":"false"},status=200)
+                    return Response({"bookmark":False,"status":False},status=200)
             except Exception as e:
                 pagenews.bookmark.add(user)
-                return Response({"bookmark_status":"true"},status=200)
+                return Response({"bookmark":True,"status":True},status=200)
 
         else:
             return Response({"message":"something is issue","status":False},status=status.HTTP_404_NOT_FOUND)
@@ -311,10 +316,10 @@ class PageNewsLike(APIView):
             try:
                 if pagenews.like.get(id=user.id):
                     pagenews.like.remove(user)
-                    return Response({"news_like_status":"false"},status=200)
+                    return Response({"likes":False,"status":False},status=200)
             except Exception as e:
                 pagenews.like.add(user)
-                return Response({"news_like_status":"true"},status=200)
+                return Response({"likes":True,"status":True},status=200)
 
         else:
             return Response({"message":"something is issue","status":False},status=status.HTTP_404_NOT_FOUND)

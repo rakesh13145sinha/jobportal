@@ -15,3 +15,8 @@ class CourseSerializers(serializers.ModelSerializer):
 	class Meta:
 		model=Course
 		fields=['name']
+
+class ReportSerializers(serializers.ModelSerializer):
+	class Meta:
+		model=Report
+		fields='__all__'

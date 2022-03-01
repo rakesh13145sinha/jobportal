@@ -1,15 +1,17 @@
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+# load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 #TEMPLATE_DIR=os.path.join(BASE_DIR,'forntend/template')
 
+SECRET_KEY = str(os.getenv('SECRET_KEY'))
 
-SECRET_KEY = 'django-insecure-%2*=*$=h^m@+_!dd8roj@tk@(qd_14!@dles@xqsfj7-h3pt04'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = bool( os.environ.get('DJANGO_DEBUG', True) )
 
 ALLOWED_HOSTS = ['localhost','j-d-u.com']
 
@@ -82,14 +84,18 @@ DATABASES = {
     'default': {
 
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'testdb',
+        'NAME':'testdb',
         'USER': 'med',
         'PASSWORD': 'sanjit@123',
         'HOST': 'localhost',
         'PORT': '5432'
 
     }
+
+
+    
 }
+
 
 
 # Password validation
@@ -112,7 +118,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'job.authentication.AuthBackend',
+    # 'job.authentication.AuthBackend',
 )
 
 

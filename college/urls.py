@@ -6,7 +6,8 @@ from django.conf.urls.static import static
 urlpatterns=[
 	path('info/',include([
 			path('get/',AllCollege.as_view(),name="get_all_college"),
-			path('exam',EnteranceExam.as_view())
+			path('exam',EnteranceExam.as_view()),
+			path('test',TespImage.as_view())
 
 		]))
 

@@ -6,8 +6,10 @@ from .serializers import *
 from django.db.models import Q
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status 
+from rest_framework.parsers import FileUploadParser
 
 class AllCollege(APIView):
+	parser_classes = (FileUploadParser,)
 	def get(self,request):
 		college_id=request.GET.get('collegeid')
 
@@ -41,7 +43,7 @@ class AllCollege(APIView):
 
 	def post(self,request):
 		data=request.data 
-		serializers=MedicalCollegeSerializers(data)
+		serializers=MedicalCollegeSerializers(data=data,file=request.FILES)
 		if serializers.is_valid():
 			serializers.save()
 			return Response(serializers.data,status=status.HTTP_200_OK)
@@ -72,3 +74,13 @@ class EnteranceExam(APIView):
 		get_object_or_404(Examination,id=collegeid).delete()
 		return Response({"message":"EnteranceExam id deleted"},status=status.HTTP_200_OK)
 
+class TespImage(APIView):
+	def get(self,request):
+		return Response(ReportSerializers(Report.objects.all(),many=True).data)
+	def post(self,request):
+		data=request.data 
+		serializers=ReportSerializers(data=data)
+		if serializers.is_valid():
+			serializers.save()
+			return Response(serializers.data,status=status.HTTP_200_OK)
+		return Response(serializers.errors,status=status.HTTP_400_BAD_REQUEST)

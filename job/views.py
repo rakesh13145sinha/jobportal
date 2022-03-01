@@ -15,9 +15,7 @@ from django.contrib.auth import authenticate,login,logout
 import ast
 from django.db.models import Count
 from datetime import *
-import secrets
-import string
-import time
+
 from comment.views import get_profile
 import operator
 from functools import partial, reduce
@@ -55,7 +53,7 @@ class UserRegistration(APIView):
         try:
             identification= Identification.objects.get(phone_number=phone)
             if data.get('email') is not None or data.get('profile_name') is not None:
-                return Response({'message':"authorized user","status":identification.status},status=status.HTTP_200_OK)
+                return Response({'message':"authorized user","Verified":identification.status,"status":identification.status},status=status.HTTP_200_OK)
 
             elif identification.status==True:
                 if get_otp_status:
@@ -63,16 +61,16 @@ class UserRegistration(APIView):
                 else:
                     SaveOtp.objects.create(phone_number=phone,otp=generated_otp)
                     sending_otp(generated_otp,phone)
-                return Response({ 'message':"Otp sented Successful","status":identification.status},status=status.HTTP_200_OK)
+                return Response({ 'message':"Otp sented Successful","Verified":identification.status,"status":identification.status},status=status.HTTP_200_OK)
             else:
                
                 sending_otp(get_otp_from_database.otp,phone)
                 print("sec time otp")
-                return Response({'message':"authorized user","status":identification.status},status=status.HTTP_200_OK)
+                return Response({'message':"authorized user","Verified":identification.status,"status":identification.status},status=status.HTTP_200_OK)
         
         except Exception as msg:
            
-            print("new user",generated_otp)
+            
             random_generated_number=random.randint(10000,99999)
             
             try:
@@ -81,7 +79,7 @@ class UserRegistration(APIView):
                                             email=data['email'],
                                         )
             except Exception as msg:
-                return Response({"message":str(msg),"status":False},status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message":str(msg),"status":False,"Verified":False,},status=status.HTTP_400_BAD_REQUEST)
             try:
                 reg_pro=Identification.objects.create(
                                         userdetail=user,
@@ -95,18 +93,18 @@ class UserRegistration(APIView):
                 
 
             except Exception as msg:
-                return Response({"message":str(msg),"status":False},status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message":str(msg),"status":False,"Verified":False,},status=status.HTTP_400_BAD_REQUEST)
             try:
                 SaveOtp.objects.create(phone_number=phone,otp=generated_otp)
                
             except Exception as msg:
-                return Response({"message":str(msg)})
+                return Response({"message":str(msg),"status":False})
             try:
                 sending_otp(generated_otp,phone)
             except Exception as msg:
-                return Response({"message":str(msg)})
+                return Response({"message":str(msg),"status":False})
 
-            return Response({'message':"Otp sented Successful","registration":"registration complited","status":reg_pro.status},status=status.HTTP_200_OK)
+            return Response({'message':"Otp sented Successful","registration":"registration complited","Verified":reg_pro.status,"status":reg_pro.status},status=status.HTTP_200_OK)
         
 
 """VALIDATE OTP AUTHENTICATION AND LOGIN WITH OTP""" 
@@ -175,25 +173,25 @@ class Resend_otp(APIView):
         data =  request.data
 
         generated_otp = random.randint(1000,9999)
-
         try:
-            get_otp_from_database=SaveOtp.objects.get(phone_number=data['phone_number'])
+            contact=Identification.objects.get(phone_number=data['phone_number'])
+        except Exception as msg:
+            return Response({"message":"this phone is not a register try first registration","status":False},status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            get_otp_from_database=SaveOtp.objects.get(phone_number=contact.phone_number)
             get_otp_status=True
         except Exception as msg:
-            SaveOtp.objects.create(phone_number=data['phone_number'],otp=generated_otp)
+            SaveOtp.objects.create(phone_number=contact.phone_number,otp=generated_otp)
             get_otp_status=False
             pass
         
       
         if get_otp_status:
-            sending_otp(get_otp_from_database.otp,data['phone_number'])
+            sending_otp(get_otp_from_database.otp,contact.phone_number)
         else:
-            sending_otp(generated_otp,data['phone_number'])
+            sending_otp(generated_otp,contact.phone_number)
 
-        try:
-            contact=Identification.objects.get(phone_number=data['phone_number'])
-        except Exception as msg:
-            return Response({"message":"this phone is not a register try first registration","status":False},status=status.HTTP_400_BAD_REQUEST)
         return Response({'status':contact.status,'message':"Otp resent Successful"},status=status.HTTP_200_OK)
        
 
@@ -246,7 +244,7 @@ class UpdatePersonalInfo(APIView):
         serializers=IdentificationSerializers(contact,data=data,partial=True)
         if serializers.is_valid():
             serializers.save()
-            return Response({"message":"update successfull","status":"true"},status=201)
+            return Response({"message":"update successfull","status":True},status=201)
         return Response(serializers.errors,status=status.HTTP_400_BAD_REQUEST)
 
             
@@ -363,7 +361,7 @@ class User_Profile(APIView):
         try:
             profile=Profile.objects.get(contact__userdetail=user)
         except Exception as e:
-            return Response({"message":"profile  not exists","status":"false","exception":str(e)},status=400)
+            return Response({"message":"profile  not exists","status":False,"exception":str(e)},status=400)
         
       
 
@@ -382,7 +380,7 @@ class User_Profile(APIView):
         try:
             profile=Profile.objects.select_related('contact').get(contact__userdetail=user)
         except Exception as e:
-            return Response({"message":"profile  not exists","status":"false","exception":str(e)},status=400)
+            return Response({"message":"profile  not exists","status":False,"exception":str(e)},status=400)
         
         if data.get('profile_name'):
             get_profile_name=Identification.objects.get(id=profile.contact.id)
@@ -540,7 +538,7 @@ class UserResumeUpload(APIView):
         try:
             get_resume_id=ResumeUpload.objects.get(id=resumeid)
         except ResumeUpload.DoesNotExist:
-            return Response({"message":"resume id not found","status":"false"},status=404)
+            return Response({"message":"resume id not found","status":False},status=404)
         data['upload_file']=request.FILES['upload_file'] 
         
         serializer=ResumeUploadSerializers(get_resume_id, data=data,partial=True)
@@ -552,7 +550,7 @@ class UserResumeUpload(APIView):
     def delete(self,request):
         resume_id=request.GET.get('resume_id')
         get_object_or_404(ResumeUpload,id=resume_id).delete()
-        return Response({"message":"file deleted","status":"true"},status=200) 
+        return Response({"message":"file deleted","status":True},status=200) 
 
 
 
@@ -1352,9 +1350,9 @@ class Subjects(APIView):
                     return Response(serializers.data,status=200)
                 return Response(serializers.errors,status=400)
             except Exception as e:
-                return Response({"message":"subject id not found","status":"false"},status=400)
+                return Response({"message":"subject id not found","status":False},status=400)
         else:
-            return Response({"message":"something you passing wrong","status":"false"},status=400)
+            return Response({"message":"something you passing wrong","status":False},status=400)
     
     def delete (self,request):
         data=request.data 
@@ -1362,11 +1360,11 @@ class Subjects(APIView):
         if subjectId:
             try:
                 subject=Subject.objects.get(id=subjectId).delete()
-                return Response({"message":"subject id deleted successfully","status":"true"},status=200)
+                return Response({"message":"subject id deleted successfully","status":True},status=200)
             except Exception as e:
-                 return Response({"message":"subject id not found","exception":str(e),"status":"false"},status=400)
+                 return Response({"message":"subject id not found","exception":str(e),"status":False},status=400)
         else:
-            return Response({"message":"something you passing wrong","status":"false"},status=400)
+            return Response({"message":"something you passing wrong","status":False},status=400)
 
 
 
@@ -1398,7 +1396,7 @@ class New_Job_Post(APIView):
         try:
             user=User.objects.get(id=username_id)
         except Exception as e:
-            return Response({"message":"user not found"},status=400)
+            return Response({"message":"user not found","status":False},status=400)
         
         if categoryId:
             
@@ -1435,8 +1433,8 @@ class New_Job_Post(APIView):
                
                 resp[categorys.id].update({
                         
-                            "bookmark_status":categorys.bookmark.filter(id=user.id).exists(),
-                            "like_status":categorys.likes.filter(id=user.id).exists(), 
+                            "bookmark":categorys.bookmark.filter(id=user.id).exists(),
+                            "likes":categorys.likes.filter(id=user.id).exists(), 
                             "apply_status":categorys.applicant.filter(id=user.id).exists(),
                                         })
                 
@@ -1453,8 +1451,8 @@ class New_Job_Post(APIView):
             serializer=Category_Related_JobSerializers(jobid,many=False).data
            
             serializer.update({
-                            "bookmark_status":jobid.bookmark.filter(id=user.id).exists(),
-                            "like_status":jobid.likes.filter(id=user.id).exists(), 
+                            "bookmark":jobid.bookmark.filter(id=user.id).exists(),
+                            "likes":jobid.likes.filter(id=user.id).exists(), 
                             "apply_status":jobid.applicant.filter(id=user.id).exists(),
                             })
             return Response(serializer,status=200)  
@@ -1468,14 +1466,14 @@ class New_Job_Post(APIView):
             for category in job_id:
                 resp[category.id]=Category_Related_JobSerializers(category,many=False).data
                 resp[category.id].update({
-                        "bookmark_status":  category.bookmark.filter(id=username_id).exists() ,
-                        "like_status":category.likes.filter(id=username_id).exists(), 
+                        "bookmark":  category.bookmark.filter(id=username_id).exists() ,
+                        "likes":category.likes.filter(id=username_id).exists(), 
                         "apply_status":category.applicant.filter(id=username_id).exists(),
                                         })
                 
             return Response(resp.values(),status=200)
         else:
-            return Response({"message":"Key errors something passing wrong"},status=400)
+            return Response({"message":"Key errors something passing wrong","status":False},status=400)
             
    
     
@@ -1628,12 +1626,12 @@ class Likes(APIView):
             user=User.objects.get(id=username_id)
             
         except Exception as e:
-            return Response({"message":str(e)})
+            return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
         try:
             Category_Related_Job.objects.get(id=category_job_id,likes=user) 
-            return Response({"like_status":"true"})  
+            return Response({"likes":True,"status":True},status=status.HTTP_200_OK)  
         except Exception as e:
-             return Response({"like_status":"false"})
+             return Response({"likes":False,"status":False},status=status.HTTP_400_BAD_REQUEST)
         
     def post(self,request,format="json"):
         username_id=request.GET.get('user_id')
@@ -1647,7 +1645,7 @@ class Likes(APIView):
         try:
             user=User.objects.get(id=username_id)
         except Exception as e:
-            return Response({"message":str(e)})
+            return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
 
         if username_id and category_job_id:
             
@@ -1655,15 +1653,15 @@ class Likes(APIView):
             try:
                 job_likes=Category_Related_Job.objects.get(id=category_job_id)
             except Exception as e:
-                return Response({"message":"jobs id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"jobs id not found","status":False,"exception":str(e)},status=400)
             try:
                 if job_likes.likes.get(id=user.id):
                     job_likes.likes.remove(user)
-                    return Response({"like_status":"false","like_count":job_likes.likes.all().count()},status=200)
+                    return Response({"likes":False,"status":False,"like_count":job_likes.likes.all().count()},status=200)
             except Exception as e:
                 job_likes.likes.add(user)
-                return Response({"like_status":"true","like_count":job_likes.likes.all().count()},status=200)
-            return Response({"message":"error find check and try again","status":"true"},status=400)
+                return Response({"likes":True,"status":True,"like_count":job_likes.likes.all().count()},status=200)
+            return Response({"message":"error find check and try again","status":True},status=400)
         
         elif username_id and complaintId:
             
@@ -1671,63 +1669,63 @@ class Likes(APIView):
             try:
                 complaint=Complaint.objects.get(id=complaintId)
             except Exception as e:
-                return Response({"message":"complaint id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"complaint id not found","status":False,"exception":str(e)},status=400)
             try:
                 if complaint.likes.get(id=user.id):
                     complaint.likes.remove(user)
-                    return Response({"like_status":"false","like_count":complaint.likes.all().count()},status=200)
+                    return Response({"likes":False,"status":False,"like_count":complaint.likes.all().count()},status=200)
             except Exception as e:
                 complaint.likes.add(user)
-                return Response({"like_status":"true","like_count":complaint.likes.all().count()},status=200)
-            return Response({"message":"error find check and try again","status":"true"},status=400)
+                return Response({"likes":True,"status":True,"like_count":complaint.likes.all().count()},status=200)
+            return Response({"message":"error find check and try again","status":True},status=400)
 
         elif username_id and pollId:
             
             try:
                 poll=Poll.objects.get(id=pollId)
             except Exception as e:
-                return Response({"message":"poll id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"poll id not found","status":False,"exception":str(e)},status=400)
             try:
                 if poll.likes.get(id=user.id):
                     poll.likes.remove(user)
-                    return Response({"poll_like_status":"false","like_count":poll.likes.all().count()},status=200)
+                    return Response({"likes":False,"status":False,"like_count":poll.likes.all().count()},status=200)
             except Exception as e:
                 poll.likes.add(user)
-                return Response({"poll_like_status":"true","like_count":poll.likes.all().count()},status=200)
-            return Response({"message":"error find check and try again","status":"true"},status=400)
+                return Response({"likes":True,"status":True,"like_count":poll.likes.all().count()},status=200)
+            return Response({"message":"error find check and try again","status":True},status=400)
 
         elif username_id and new_articalId:
             
             try:
                 artical=NewsArticalPost.objects.get(id=new_articalId)
             except Exception as e:
-                return Response({"message":"News Artical id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"News Artical id not found","status":False,"exception":str(e)},status=400)
             try:
                 if artical.likes.get(id=user.id):
                     artical.likes.remove(user)
-                    return Response({"news_like_status":"false","like_count":artical.likes.all().count()},status=200)
+                    return Response({"likes":False,"status":False,"like_count":artical.likes.all().count()},status=200)
             except Exception as e:
                 artical.likes.add(user)
-                return Response({"news_like_status":"true","like_count":artical.likes.all().count()},status=200)
-            return Response({"message":"error find check and try again","status":"true"},status=400)
+                return Response({"likes":True,"status":True,"like_count":artical.likes.all().count()},status=200)
+            return Response({"message":"error find check and try again","status":True},status=400)
 
         elif username_id and articalID:
             
             try:
                 artical=Articals.objects.get(id=articalID)
             except Exception as e:
-                return Response({"message":"Artical id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"Artical id not found","status":False,"exception":str(e)},status=400)
             try:
                 if artical.likes.get(id=user.id):
                     artical.likes.remove(user)
-                    return Response({"like_status":"false","like_count":artical.likes.all().count()},status=200)
+                    return Response({"likes":False,"status":False,"like_count":artical.likes.all().count()},status=200)
             except Exception as e:
                 artical.likes.add(user)
-                return Response({"like_status":"true","like_count":artical.likes.all().count()},status=200)
-            return Response({"message":"error find check and try again","status":"true"},status=400)
+                return Response({"likes":True,"status":True,"like_count":artical.likes.all().count()},status=200)
+            return Response({"message":"error find check and try again","status":True},status=400)
 
         else:
-            return Response({"errors":"key error","status":"false"},status=200)
+            return Response({"errors":"key error","status":False},status=200)
 
 '''Add bookmark'''
 '''api/job/bookmark/'''    
@@ -1739,7 +1737,7 @@ class BookMark(APIView):
         try:
             user=User.objects.get(id=username_id)
         except Exception as e:
-            return Response({"message":str(e)})
+            return Response({"message":str(e),"status":False})
        
         job_categorys=Category_Related_Job.objects.filter(bookmark=user)
         
@@ -1748,8 +1746,8 @@ class BookMark(APIView):
             serializer=Category_Related_JobSerializers(category,many=False).data
             resp[category.id]=serializer
             resp[category.id].update({
-                "bookmark_status":category.bookmark.filter(id=user.id).exists(),
-                "like_status":category.likes.filter(id=user.id).exists(), 
+                "bookmark":category.bookmark.filter(id=user.id).exists(),
+                "likes":category.likes.filter(id=user.id).exists(), 
                 "apply_status":category.applicant.filter(id=user.id).exists(),
                 })
            
@@ -1769,79 +1767,79 @@ class BookMark(APIView):
         try:
             user=User.objects.get(id=username_id)
         except Exception as e:
-            return Response({"message":str(e)})
+            return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
         
         if username_id and category_job_id:
             try:
                 job_likes=Category_Related_Job.objects.get(id=category_job_id)
             except Exception as e:
-                return Response({"message":"jobs id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"jobs id not found","status":False,"exception":str(e)},status=400)
             try:
                 if job_likes.bookmark.get(id=user.id):
                     job_likes.bookmark.remove(user)
-                    return Response({"bookmark_status":"false"},status=200)
+                    return Response({"bookmark":False,"status":False},status=200)
             except Exception as e:
                 job_likes.bookmark.add(user)
-                return Response({"bookmark_status":"true"},status=200)
+                return Response({"bookmark":True,"status":True},status=200)
         
         elif username_id and news_arctical:
             try:
                 artical=NewsArticalPost.objects.get(id=news_arctical)
             except Exception as e:
-                return Response({"message":"News Artical id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"News Artical id not found","status":False,"exception":str(e)},status=400)
             try:
                 if artical.bookmark.get(id=user.id):
                     artical.bookmark.remove(user)
-                    return Response({"bookmark_status":"false"},status=200)
+                    return Response({"bookmark":False,"status":False},status=200)
             except Exception as e:
                 artical.bookmark.add(user)
-                return Response({"bookmark_status":"true"},status=200)
+                return Response({"bookmark":True,"status":True},status=200)
 
         elif username_id and articalID:
             try:
                 artical=Articals.objects.get(id=articalID)
             except Exception as e:
-                return Response({"message":"Artical id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"Artical id not found","status":False,"exception":str(e)},status=400)
             try:
                 if artical.bookmark.get(id=user.id):
                     artical.bookmark.remove(user)
-                    return Response({"bookmark_status":"false"},status=200)
+                    return Response({"bookmark":False,'status':False},status=200)
             except Exception as e:
                 artical.bookmark.add(user)
-                return Response({"bookmark_status":"true"},status=200)
+                return Response({"bookmark":True,"status":True},status=200)
 
         elif username_id and poll:
             try:
                 single_poll=Poll.objects.get(id=poll)
             except Exception as e:
-                return Response({"message":"poll id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"poll id not found","status":False,"exception":str(e)},status=400)
             try:
                 if single_poll.bookmark.get(id=user.id):
                     single_poll.bookmark.remove(user)
-                    return Response({"bookmark_status":"false"},status=200)
+                    return Response({"bookmark":False,"status":False},status=200)
             except Exception as e:
                 single_poll.bookmark.add(user)
-                return Response({"bookmark_status":"true"},status=200)
+                return Response({"bookmark":True,"status":True},status=200)
 
         
         elif username_id and complaint:
             try:
                 case=Complaint.objects.get(id=complaint)
             except Exception as e:
-                return Response({"message":"complaint id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"complaint id not found","status":False,"exception":str(e)},status=400)
             try:
                 if case.bookmark.get(id=user.id):
                     case.bookmark.remove(user)
-                    return Response({"bookmark_status":"false"},status=200)
+                    return Response({"bookmark":False,"status":False},status=200)
             except Exception as e:
                 case.bookmark.add(user)
-                return Response({"bookmark_status":"true"},status=200)
+                return Response({"bookmark":True,"status":True},status=200)
         
         
 
 
 
-        return Response({"message":"error find check and try again","status":"true"},status=400)
+        return Response({"message":"error find check and try again","status":True},status=400)
 
 """GET FOLLOWING PROFILE"""
 class FollowingProfile(APIView):
@@ -1851,7 +1849,7 @@ class FollowingProfile(APIView):
         try:
             followingprofile=Profile.objects.filter(follow=get_object_or_404(User,id=username_id))
         except Exception as e:
-            return Response({"message":str(e)})
+            return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
         for followering in followingprofile:
             
             response[followering.id]={
@@ -1870,7 +1868,7 @@ class TryToFollowUnfollow(APIView):
         try:
             author=Profile.objects.select_related('contact').get(contact__userdetail__id=username_id)
         except Exception as e:
-            return Response({"message":str(e)})
+            return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
         for follower in author.follow.all():
             pro=Profile.objects.get(contact__userdetail__id=follower.id)
             response[follower.id]={
@@ -1887,21 +1885,21 @@ class TryToFollowUnfollow(APIView):
             try:
                 user=User.objects.get(id=username_id)
             except Exception as e:
-                return Response({"message":str(e)})
+                return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
             
             try:
                 author=Profile.objects.select_related('contact').get(contact__userdetail__id=followid)
             except Exception as e:
-                return Response({"message":"follow id not found","status":"false","exception":str(e)},status=400)
+                return Response({"message":"follow id not found","status":False,"exception":str(e)},status=400)
             try:
                 if author.follow.get(id=user.id):
                     author.follow.remove(user)
-                    return Response({"follow":"false"},status=200)
+                    return Response({"follow":False,"status":False},status=200)
             except Exception as e:
                 author.follow.add(user)
-                return Response({"follow":"true"},status=200)
+                return Response({"follow":True,"status":True},status=200)
         else:
-            return Response({"message":"you can not follow own profile","status":"false"},status=400)
+            return Response({"message":"you can not follow own profile","status":False},status=400)
 
 
 ########################################################END BLOCK OF FOLLOW AND BOOKMARK LIKE#####################
@@ -1916,7 +1914,7 @@ class Jobs_Applies(APIView):
         try:
             user=User.objects.get(id=username_id)
         except Exception as e:
-            return Response({"message":str(e)})
+            return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
        
         job_categorys=Category_Related_Job.objects.filter(applicant=user)
         
@@ -1942,20 +1940,20 @@ class Jobs_Applies(APIView):
         try:
             user=User.objects.get(id=username_id)
         except Exception as e:
-            return Response({"message":str(e)})
+            return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
            
         try:
             job_application=Category_Related_Job.objects.get(id=category_job_id)
         except Exception as e:
-            return Response({"message":"jobs id not found","status":"false","exception":str(e)},status=400)
+            return Response({"message":"jobs id not found","status":False,"exception":str(e)},status=400)
         try:
             if job_application.applicant.get(id=user.id):
                 job_application.applicant.remove(user)
-                return Response({"apply_status":False},status=200)
+                return Response({"apply_status":False,"status":False},status=200)
         except Exception as e:
             job_application.applicant.add(user)
-            return Response({"apply_status":True},status=200)
-        return Response({"message":"error find check and try again","status":"true"},status=400)
+            return Response({"apply_status":True,"status":True},status=200)
+        return Response({"message":"error find check and try again","status":True},status=400)
         
 class News_Category(APIView):
     def get(self,request):
@@ -1972,7 +1970,7 @@ class Related_TO_News_Category(APIView):
             try:
                 news_category=Category.objects.get(id=category_id,status=True)
             except Exception as e:
-                return Response({"message":str(e)})
+                return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
             serializers1=CategorySerializers(news_category,many=False).data 
             news=news_category.newsartical_set.filter(visiable=True).order_by('-created_date')
            
@@ -2074,7 +2072,7 @@ class Poll_Comment(APIView):
             try:
                 profile_detail=Profile.objects.get(contact__userdetail__id=username_id)
             except Exception as msg:
-                return Response({"message":str(msg)})
+                return Response({"message":str(msg),"status":False},status=status.HTTP_400_BAD_REQUEST)
             poll_comment=PollComment.objects.select_related('poll_id').filter(poll_id__id=pollid,profile__id=username_id).order_by("-id")
             
             if poll_comment.exists():
@@ -2103,7 +2101,7 @@ class Poll_Comment(APIView):
             try:
                 profile_detail=Profile.objects.select_related('contact').get(contact__userdetail__id=poll_comment.profile.id)
             except Exception as msg:
-                return Response({"message":str(msg)})
+                return Response({"message":str(msg),"status":False},status=status.HTTP_400_BAD_REQUEST)
             
             response={
                     "comment_id":poll_comment.id,
@@ -2150,7 +2148,7 @@ class Poll_Comment(APIView):
         PollComment.objects.create(poll_id=pollid,profile=userid,comment=data['comment'])
 
         poll_comment=pollid.pollcomment_set.all().count()
-        return Response({"message":"poll comment posted","status":"true","poll_comment":poll_comment},status=200)
+        return Response({"message":"poll comment posted","status":True,"poll_comment":poll_comment},status=200)
     
     def put(self,request):
         commentId=request.GET.get('comment_id')
@@ -2516,7 +2514,7 @@ class Artical_Comment(APIView):
         ArticalComment.objects.create(artical_id=articalid,profile=userid,comment=data['comment'])
 
         artical_comment=articalid.articalcomment_set.all().count()
-        return Response({"message":"artical comment posted","status":"true","artical_comment":artical_comment},status=200)
+        return Response({"message":"artical comment posted","status":True,"artical_comment":artical_comment},status=200)
 
 """ NEW ARTICAL POST ,ARTICAL POST AND COMMENT API END """
 
@@ -2643,7 +2641,7 @@ class Complaint_Comment(APIView):
         userid=get_object_or_404(User,id=data['profile'])
         Discussions.objects.create(case_id=complaintid,profile=userid,comment=data['comment'])
         total_discussion=complaintid.discussions_set.all().count()
-        return Response({"message":"artical comment posted","status":"true","discussion":total_discussion},status=200)
+        return Response({"message":"artical comment posted","status":True,"discussion":total_discussion},status=200)
 
 """COMPLAINT POST AND COMMENT API END"""
 
@@ -3078,7 +3076,7 @@ class Upload_status(APIView):
             
                 MultiImageStatus.objects.create(profile=profile,image=img)
 
-            return Response({"message":"successfully uploaded image","status":"true"},status=200)
+            return Response({"message":"successfully uploaded image","status":True},status=200)
         
         else:
             return Response({"message":"key error","status":False},status=400) 
