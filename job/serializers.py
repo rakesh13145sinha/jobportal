@@ -40,6 +40,14 @@ class Category_Related_JobSerializers(serializers.ModelSerializer):
         
         exclude=('likes','bookmark','applicant','category')
 
+class CategoryRelatedJobSerializers(serializers.ModelSerializer):
+    class Meta:
+        model=Category_Related_Job
+        fields=("id","designation","Speciality","hosptial_name",
+                "location","salary","experince","hr_contact","hospitail_image","monthly_or_anual")
+
+
+
 class SubjectSerializers(serializers.ModelSerializer):
     class Meta:
         model=Subject
@@ -58,41 +66,37 @@ class StateSerializers(serializers.ModelSerializer):
         fields=['id','name']
 
 
-class CategorySerializers(serializers.ModelSerializer):
-    class Meta:
-        model=Category 
-        fields=('id','news_title')
-
-class NewsArticalSerializers(serializers.ModelSerializer):
-
-    class Meta:
-
-        model=NewsArtical
-
-        fields='__all__'
-
-class Custome_JobSerializers(serializers.ModelSerializer):
-
-    class Meta:
-
-        model=Custome_Job 
-
-        fields='__all__'
 class NewsArticalPostSerializers(serializers.ModelSerializer):
     class Meta:
         model=NewsArticalPost  
         exclude=['likes','bookmark']
 
+class NewsArticalSerializers(serializers.ModelSerializer):
+    class Meta:
+        model=NewsArticalPost  
+        exclude=['likes','bookmark',"status","created_date","update"]
+
 
 class PollSerializers(serializers.ModelSerializer):
     class Meta:
         model=Poll  
-        fields=['id','poll_user','poll_title','option1','option2','option3','option4','poll_status','created_date','update']
+        fields=['id','poll_user','title','option1','option2','option3','option4','poll_status']
+
+class PollVoteSerializers(serializers.ModelSerializer):
+    class Meta:
+        model=Poll  
+        fields=['id','title','option1','option2','option3','option4','poll_status']
 
 class ComplaintSerializers(serializers.ModelSerializer):
     class Meta:
         model=Complaint
         exclude=['likes','bookmark']
+
+class CaseSerializers(serializers.ModelSerializer):
+    class Meta:
+        model=Complaint
+        fields=["id","title","image","chief_complaint","complaint_status"]
+
 
 class College_StorySerializers(serializers.ModelSerializer):
     class Meta:
@@ -104,10 +108,10 @@ class ArticalsSerializers(serializers.ModelSerializer):
         model=Articals
         exclude=['likes','bookmark']
 
-class RequestJobPostSerializers(serializers.ModelSerializer):
+class ArticalSerializers(serializers.ModelSerializer):
     class Meta:
-        model=RequestJobPost 
-        fields="__all__"
+        model=Articals
+        exclude=['likes','bookmark',"status","created_date","update"]
 
 class ResumeUploadSerializers(serializers.ModelSerializer):
     class Meta:
@@ -117,13 +121,9 @@ class ResumeUploadSerializers(serializers.ModelSerializer):
 
 class BannerSerializers(serializers.ModelSerializer):
     class Meta:
-        model=Banner 
+        model=HospitalBanner 
         fields="__all__"
 
-class HomeBannerSerializers(serializers.ModelSerializer):
-    class Meta:
-        model=HomeBanner 
-        fields="__all__"
 
 
 class DesignationSerializers(serializers.ModelSerializer):
@@ -137,7 +137,3 @@ class HospitalTypeSerializer(serializers.ModelSerializer):
         model=Hospital_Type
         fields='__all__'
 
-class RecentSearchSerializer(serializers.ModelSerializer):
-    class Meta:
-        model=RecentSearch
-        exclude=["user"]

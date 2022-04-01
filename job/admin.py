@@ -42,42 +42,24 @@ class SaveOtpAdmin(admin.ModelAdmin):
 
 
 
-
 admin.site.register(Identification,IdentificationAdmin)
-
-
-
 admin.site.register(Profile,ProfileAdmin)
-
 admin.site.register(Category_Related_Job,Category_Related_JobAdmin)
-
-admin.site.register(Category)
-
 admin.site.register(Job_By_Category,Job_By_CategoryAdmin)
-
 admin.site.register(HigherQualification)
-
 admin.site.register(Complaint,ComplaintAdmin)
-
-admin.site.register(Hospital_Department)
-
 admin.site.register(Designation)
 admin.site.register(Experience)
-
-
-
-
 admin.site.register(State)
 admin.site.register(City)
 admin.site.register(SaveOtp,SaveOtpAdmin)
 admin.site.register(Poll,PollAdmin)
-admin.site.register(MultiImageStatus)
 admin.site.register(College_Story)
 admin.site.register(Articals)
 admin.site.register(PollVote)
 admin.site.register(Discussions)
 admin.site.register(ResumeUpload)
-admin.site.register(Hospital_Type)
-admin.site.register(RecentSearch)
+admin.site.register(HospitalInfo)
+
 
 

@@ -13,7 +13,7 @@ SECRET_KEY = str(os.getenv('SECRET_KEY'))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool( os.environ.get('DJANGO_DEBUG', True) )
 
-ALLOWED_HOSTS = ['localhost','j-d-u.com']
+ALLOWED_HOSTS = ['localhost','3.132.212.116']
 
 
 # Application definition
@@ -28,10 +28,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "corsheaders",
     'rest_framework',
+    'rest_framework.authtoken',
     'imagekit',
-    'crispy_forms',
     'drf_yasg',
-   
     'job.apps.JobConfig',
     'AdminUser.apps.AdminuserConfig',
     'college.apps.CollegeConfig',
@@ -77,20 +76,20 @@ WSGI_APPLICATION = 'jobportal.wsgi.application'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
     'default': {
-
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME':'testdb',
-        'USER': 'med',
-        'PASSWORD': 'sanjit@123',
-        'HOST': 'localhost',
-        'PORT': '5432'
-
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
+    # 'default': {
+
+    #     'ENGINE': 'django.db.backends.postgresql_psycopg2',
+    #     'NAME':'testdb',
+    #     'USER': 'med',
+    #     'PASSWORD': 'sanjit@123',
+    #     'HOST': 'localhost',
+    #     'PORT': '5432'
+
+    # }
 
 
     

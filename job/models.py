@@ -137,7 +137,36 @@ class Job_By_Category(models.Model):
     def __str__(self):
         return self.title
 
+class HospitalInfo(models.Model):
+    name=models.CharField(max_length=200,null=True)
+    typeofhospital=models.CharField(max_length=200,null=True)
+    city=models.CharField(max_length=200,null=True)
+    location=models.CharField(max_length=200,null=True)
+    state=models.CharField(max_length=200,null=True)
+    no_of_OT=models.CharField(max_length=200,null=True)
+    no_of_sepeciality=models.CharField(max_length=200)
+    no_of_bed=models.CharField(max_length=200)
+    daily_OPD=models.CharField(max_length=200)
+    icu=models.IntegerField(null=True)
+    nicuc=models.IntegerField(null=True)    
+    picu=models.IntegerField(null=True)
 
+    def __str__(self):
+        return self.name
+        
+class HospitalBanner(models.Model):
+    hospital=models.ForeignKey(HospitalInfo,on_delete=models.CASCADE,null=True)
+    file=models.FileField(upload_to='hostpital/image',null=True)
+
+class HospitalHighlight(models.Model):
+    hospital=models.ForeignKey(HospitalInfo,on_delete=models.CASCADE,null=True)
+    title=models.CharField(max_length=200)
+    file=models.FileField(upload_to='hostpital/image',null=True)
+
+class HospitalSpeciality(models.Model):
+    hospital=models.ForeignKey(HospitalInfo,on_delete=models.CASCADE,null=True)
+    title=models.CharField(max_length=200)
+    file=models.FileField(upload_to='hostpital/image',null=True)
 
 YEAR_OR_MONTHLY_SALAY = [
         ('Monthly', 'MONTHLY'),
@@ -152,7 +181,7 @@ GENDER = [
     ]
 
 
-JOBTYPE=[("Part_Time","Part_Time"),("Full_Time","Full_Time")]
+JOBTYPE=[("Part Time","Part Time"),("Full Time","Full Time")]
 
 class Category_Related_Job(models.Model):
     category=models.ForeignKey(Job_By_Category,on_delete=models.CASCADE)
@@ -164,7 +193,7 @@ class Category_Related_Job(models.Model):
                                            format='JPEG',
                                            options={'quality': 20},null=True,blank=True)
     location=models.CharField('Job Location',max_length=100,null=True)
-    state=models.CharField("Job State",null=True,max_length=200)
+    #state=models.CharField("Job State",null=True,max_length=200)
     salary=models.CharField(max_length=250,null=True)
     monthly_or_anual=models.CharField("Monthly/Annual",max_length=100,choices=YEAR_OR_MONTHLY_SALAY,default='Monthly',null=True)
     experince=models.CharField(max_length=250,null=True)
@@ -177,10 +206,7 @@ class Category_Related_Job(models.Model):
     accommodation=models.CharField(max_length=20)
     hospital_type=models.CharField(max_length=100,null=True)
     job_type=models.CharField(max_length=100,null=True,choices=JOBTYPE)
-    total_bed=models.IntegerField(null=True)
-    icu=models.IntegerField(null=True)
-    nicuc=models.IntegerField(null=True)    
-    picu=models.IntegerField(null=True)
+    
     hr_contact=models.CharField(max_length=20,null=True,default="1234567890")
     social_contact=models.CharField(max_length=20,null=True,default="0123456789")
     top_job=models.BooleanField(default=False)
@@ -197,14 +223,10 @@ class Category_Related_Job(models.Model):
 
 class NewsArticalPost(models.Model):
     userid=models.ForeignKey(User ,on_delete=models.CASCADE)
-    artical_title=models.CharField(max_length=200,null=True)
-    # artical_image=ProcessedImageField(upload_to='news/image/',
-    #                                        processors=[ResizeToFill(150,150)],
-    #                                        format='JPEG',
-    #                                        options={'quality':100},null=True,blank=True)
-    artical_image=models.ImageField(upload_to='news/image/',null=True,blank=True)
-    artical_discription=models.TextField()
-    artical_status=models.BooleanField(default=False) 
+    title=models.CharField(max_length=200,null=True)
+    image=models.ImageField(upload_to='news/image/',null=True,blank=True)
+    discription=models.TextField()
+    status=models.BooleanField(default=False) 
     likes=models.ManyToManyField(User,related_name="artical_likes")
     bookmark=models.ManyToManyField(User,related_name="newsartical",default=None,blank=True)
 
@@ -218,12 +240,9 @@ class NewsArticalPost(models.Model):
 
 class Poll(models.Model):
     poll_user=models.ForeignKey(User ,on_delete=models.CASCADE)
-    poll_title=models.CharField(max_length=500,null=True)
-    # poll_image=ProcessedImageField(upload_to='news/image/',
-    #                                        processors=[ResizeToFill(150,150)],
-    #                                        format='JPEG',
-    #                                        options={'quality': 20},null=True,blank=True)
-    poll_image=models.ImageField(upload_to='news/image/',null=True,blank=True)
+    title=models.CharField(max_length=500,null=True)
+    
+    image=models.ImageField(upload_to='news/image/',null=True,blank=True)
     option1=models.CharField(max_length=200,null=True)
     option2=models.CharField(max_length=200,null=True)
     option3=models.CharField(max_length=200,null=True)
@@ -241,7 +260,7 @@ class Poll(models.Model):
 #this is for poll voter
 class PollVote(models.Model):
     OPTIONS=[("A","A"),("B","B"),("C","C"),("D","D")]
-    poll_id=models.ForeignKey(Poll,on_delete=models.CASCADE)
+    poll=models.ForeignKey(Poll,on_delete=models.CASCADE)
     profile=models.ForeignKey(User,on_delete=models.CASCADE)
     choice=models.CharField(max_length=5,choices=OPTIONS)
     vote=models.BooleanField(default=False) 
@@ -258,7 +277,7 @@ class PollVote(models.Model):
 #poll comment store in the table
 class PollComment(models.Model):
     
-    poll_id=models.ForeignKey(Poll,on_delete=models.CASCADE)
+    poll=models.ForeignKey(Poll,on_delete=models.CASCADE)
     profile=models.ForeignKey(User,on_delete=models.CASCADE)
     comment=models.TextField()
     agree=models.ManyToManyField(User,related_name="poll_agree")
@@ -276,9 +295,9 @@ class College_Story(models.Model):
     date=models.DateField()
     
     photos=models.ImageField(upload_to='news/image/',null=True)
-    event_discription=models.TextField()
-    story_date=models.DateTimeField(auto_now=True,auto_now_add=False,null=True)
-    college_story_status=models.BooleanField(default=False)
+    discription=models.TextField()
+    storydate=models.DateTimeField(auto_now=True,auto_now_add=False,null=True)
+    status=models.BooleanField(default=False)
     likes=models.ManyToManyField(User,related_name="college_story_likes")
     bookmark=models.ManyToManyField(User,related_name="college_story_bookmark",default=None,blank=True)
     update=models.DateTimeField(auto_now=False,auto_now_add=True,null=True)
@@ -288,16 +307,16 @@ class College_Story(models.Model):
 
 class Articals(models.Model):
     user=models.ForeignKey(User,on_delete=models.CASCADE)
-    artical_title=models.CharField(max_length=200)
+    title=models.CharField(max_length=200)
     # mediafile=ProcessedImageField(upload_to='news/image/',
     #                                        processors=[ResizeToFill(150,150)],
     #                                        format='JPEG',
     #                                        options={'quality': 40},null=True)
-    mediafile=models.ImageField(upload_to='news/image/',null=True)
-    artical_discription=models.TextField()
+    image=models.ImageField(upload_to='news/image/',null=True)
+    discription=models.TextField()
     likes=models.ManyToManyField(User,related_name="articalslike")
     bookmark=models.ManyToManyField(User,related_name="articalsbookmark")
-    art_status=models.BooleanField(default=True) 
+    status=models.BooleanField(default=True) 
     created_date=models.DateTimeField(auto_now=False,auto_now_add=True,null=True)
     update=models.DateTimeField(auto_now=True,auto_now_add=False,null=True)
 
@@ -307,7 +326,7 @@ class Articals(models.Model):
 #this store Artical comment
 class ArticalComment(models.Model):
     
-    artical_id=models.ForeignKey(Articals,on_delete=models.CASCADE)
+    artical=models.ForeignKey(Articals,on_delete=models.CASCADE)
     profile=models.ForeignKey(User,on_delete=models.CASCADE)
     comment=models.TextField()
     created_date=models.DateTimeField(auto_now=False,auto_now_add=True,null=True)
@@ -322,9 +341,9 @@ class ArticalComment(models.Model):
 
 #NEW CASE POST
 class Complaint(models.Model):
-    complaint_id=models.ForeignKey(User ,on_delete=models.CASCADE)
-    com_title=models.CharField(max_length=500,null=True,blank=True)
-    com_image=models.ImageField(upload_to='com/',null=True,blank=True)
+    complaint=models.ForeignKey(User ,on_delete=models.CASCADE)
+    title=models.CharField(max_length=500,null=True,blank=True)
+    image=models.ImageField(upload_to='com/',null=True,blank=True)
     chief_complaint=models.TextField(null=True,blank=True)
     present_illness=models.TextField(null=True,blank=True)
     past_illness=models.TextField(null=True,blank=True)
@@ -338,7 +357,7 @@ class Complaint(models.Model):
     lab_finding=models.CharField(max_length=200,null=True,blank=True)
     imaging=models.CharField(max_length=200,null=True,blank=True)
     diagnosis=models.CharField(max_length=500,null=True,blank=True)
-    complaint_status=models.BooleanField(default=False)
+    complaint_status=models.BooleanField(default=True)
     likes=models.ManyToManyField(User,related_name="case_likes")
     bookmark=models.ManyToManyField(User,related_name="case_bookmark",default=None,blank=True)
     created_date=models.DateTimeField(auto_now=True,auto_now_add=False,null=True)
@@ -354,7 +373,7 @@ class Complaint(models.Model):
 #it store complaint comment
 class Discussions(models.Model):
     
-    case_id=models.ForeignKey(Complaint,on_delete=models.CASCADE)
+    case=models.ForeignKey(Complaint,on_delete=models.CASCADE)
     profile=models.ForeignKey(User,on_delete=models.CASCADE)
     comment=models.TextField()
     agree=models.ManyToManyField(User,related_name="case_agree")
@@ -363,125 +382,10 @@ class Discussions(models.Model):
     def __str__(self):
         return self.profile.username
     
-    
-
-
-class MultiImage(models.Model):
-    complaint=models.ForeignKey(Complaint,on_delete=models.CASCADE,null=True,related_name="compaint")
-    news_poll=models.ForeignKey(Poll,on_delete=models.CASCADE,null=True,related_name="poll")
-    image=ProcessedImageField(upload_to='multi_image/image/',
-                                           processors=[ResizeToFill(200,200)],
-                                           format='JPEG',
-                                           options={'quality':20},null=True,blank=True)
-    image=models.ImageField(upload_to='multi_image/image/',
-                                           null=True,blank=True)
-    complaint_status=models.BooleanField(default=False)
-    newspoll_status=models.BooleanField(default=False)
-
-   
-
-
-class Category(models.Model):
-    news_title=models.CharField(max_length=200)
-    status=models.BooleanField(default=True)
-    created_date=models.DateTimeField(auto_now=False,auto_now_add=True)
-    updated_date=models.DateTimeField(auto_now=True,auto_now_add=False)
-    
-    def __str__(self):
-        return self.news_title
-
-class NewsArtical(models.Model):
-    news=models.ForeignKey(Category ,on_delete=models.CASCADE)
-    headline=models.CharField(max_length=200,null=True)
-    sub_headline=models.CharField(max_length=200,null=True)
-    title=models.CharField( "News Title",max_length=2000,null=True)
-    
-    # image=ProcessedImageField(upload_to='news/image/',
-    #                                        processors=[ResizeToFill(150,150)],
-    #                                        format='JPEG',
-    #                                        options={'quality': 20},null=True,blank=True)
-    image=models.ImageField(upload_to='news/image/',
-                                           null=True,blank=True)
-    discription=models.TextField()
-    byother=models.BooleanField(default=False)
-    author=models.CharField(max_length=200,null=True)
-    update=models.DateTimeField()
-    visiable=models.BooleanField(default=True)
-    created_date=models.DateTimeField(auto_now=False,auto_now_add=True)
-    
-    def __str__(self):
-        return self.title
 
 
 
 
-class RequestJobPost(models.Model):
-    JOBTYPE=[("Part Time","Part_Time"),("Full_Time","Full_Time")]
-
-    orginization_name=models.CharField(max_length=200)
-    hospital_type=models.CharField(max_length=200)
-    location=models.CharField(max_length=200)
-    contact=models.CharField(max_length=20)
-    department=models.CharField(max_length=1000,null=True)
-    position=models.CharField(max_length=1000,null=True)
-    salay=models.CharField(max_length=1000,null=True)
-    vacancy=models.IntegerField(null=True)
-    jobtype=models.CharField(max_length=100,choices=JOBTYPE,null=True)
-    status=models.BooleanField(default=False)
-    created=models.DateTimeField(auto_now=True,auto_now_add=False)
-    update=models.DateTimeField(auto_now=False,auto_now_add=True)
-
-    def __str__(self):
-        return self.orginization_name
-
-class Job_Type(models.Model):
-    JOBTYPE=[("Part Time","Part_Time"),("Full_Time","Full_Time")]
-    jobtype=models.CharField(max_length=100,choices=JOBTYPE)
-    
-
-class Custome_Job(models.Model):
-    user_id=models.ForeignKey(User,on_delete=models.CASCADE,null=True)
-    department=models.CharField(max_length=200)
-    job_position=models.CharField(max_length=100)
-    type_of_hospital=models.CharField(max_length=200)
-    location=models.CharField(max_length=100)
-    minimum_salary=models.IntegerField()
-    work_expericence=models.CharField(max_length=100)
-    jobType=models.CharField(max_length=200)
-    allowance=models.CharField(max_length=100)
-    
-    # class Meta:
-    #     unique_together=('user_id',)
-    
-  
-class Banner(models.Model):
-    image=models.ImageField(upload_to='banner/image')
-
-
-class HomeBanner(models.Model):
-    image=models.ImageField(upload_to='banner/home/image')
-
-class MultiImageStatus(models.Model):
-    profile=models.ForeignKey(Profile,on_delete=models.CASCADE,related_name="profile")
-    
-    # image=ProcessedImageField(upload_to='multi_image/status/image',
-    #                                        processors=[ResizeToFill(500,500)],
-    #                                        format='JPEG',
-    #                                        options={'quality':50},null=True,blank=True)
-    image=models.ImageField(upload_to='multi_image/status/image',
-                                        null=True,blank=True)
-    created=models.DateTimeField(auto_now=True,auto_now_add=False)
-
-"""college info"""
-
-
-
-
-
-
-
-
-#for admin post only
 """specialist"""
 class Hospital_Department(models.Model):
     department_name=models.CharField(max_length=200)
@@ -552,10 +456,7 @@ class City(models.Model):
     def __str__(self):
         return self.hospital_city_name
 
-class RecentSearch(models.Model):
-    user=models.ForeignKey(User,on_delete=models.CASCADE)
-    search=models.JSONField()
-    created=models.DateTimeField(auto_now=True,auto_now_add=False)
-    #update=models.DateTimeField(auto_now_add=False,auto_now=False,null=True)
+
+
 
     

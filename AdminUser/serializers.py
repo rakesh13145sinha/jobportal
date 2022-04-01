@@ -1,5 +1,4 @@
 
-from django.db.models import fields
 from rest_framework import serializers
 from job.models import *
 from .models import *
@@ -13,17 +12,14 @@ class IdentificationSerializers(serializers.ModelSerializer):
     
     class Meta:
         model=Identification
-        fields='__all__'
-        depth=3
-# class ProfileSerializers(serializers.ModelSerializer):
+        exclude=['id']
+       
+class ProfileSerializers(serializers.ModelSerializer):
         
-#     class Meta:
-#         model=Profile
-#         fields=['profile_name','profileImage','status',
-#                 'ug','ug_institute_name','pg','pg_institute_name',
-#                 'current_institute','current_department','degrees',
-#                 'tell_me_about_youself','current_job_location','skill'
-#                 ]
+    class Meta:
+        model=Profile
+        exclude=['id']
+
 
 
 class Category(serializers.ModelSerializer):
@@ -58,4 +54,40 @@ class Hospital_DepartmentSerializers(serializers.ModelSerializer):
 class DesignationSerializers(serializers.ModelSerializer):
     class Meta:
         model=Designation
+        fields="__all__"
+
+class QuestionSerializers(serializers.ModelSerializer):
+    
+    
+    class Meta:
+        model=Question
+        fields="__all__"
+class AtteptQuestionSerializers(serializers.ModelSerializer):
+
+    class Meta:
+        model=AtteptQuestion
+        fields="__all__"
+
+class HospitalImgtourSerializers(serializers.ModelSerializer):
+    
+    class Meta:
+        model=HospitalBanner
+        fields="__all__"
+
+class HospitalHighlightSerializers(serializers.ModelSerializer):
+    
+    class Meta:
+        model=HospitalHighlight
+        fields="__all__"
+
+class HospitalSpecialitySerializers(serializers.ModelSerializer):
+    
+    class Meta:
+        model=HospitalSpeciality
+        fields="__all__"
+
+class HospitalInfoSerializers(serializers.ModelSerializer):
+    
+    class Meta:
+        model=HospitalInfo
         fields="__all__"

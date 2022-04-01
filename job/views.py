@@ -1,27 +1,27 @@
+
 from django.http import response
 from django.shortcuts import render,get_object_or_404
+
 from rest_framework.response import Response 
 from rest_framework.parsers import FormParser,MultiPartParser,JSONParser 
-from rest_framework import status 
+from rest_framework import status
+from django.core.paginator import Paginator
 from .models import *
 from .send_otp import *
-from django.db.models import Q, query
+from django.db.models import Q
 from rest_framework.views import APIView
-from django.core.exceptions import AppRegistryNotReady, ObjectDoesNotExist
 from .serializers import *
 from django.contrib.auth.models import User
 import random
 from django.contrib.auth import authenticate,login,logout
 import ast
-from django.db.models import Count
 from datetime import *
-
-from comment.views import get_profile
-import operator
+from django.db.models import Count
 from functools import partial, reduce
 from rest_framework.parsers import FileUploadParser
-
-
+from AdminUser.models import Question,AtteptQuestion
+from AdminUser.serializers import QuestionSerializers,AtteptQuestionSerializers,HospitalBanner
+from listdata.collegedata import *
 """REGISTRATION LOGIN LOGOUT AND RESEND OTP API START HERE"""
 
 '''api/reg/phone/'''
@@ -93,6 +93,8 @@ class UserRegistration(APIView):
                 
 
             except Exception as msg:
+                user.delete()
+
                 return Response({"message":str(msg),"status":False,"Verified":False,},status=status.HTTP_400_BAD_REQUEST)
             try:
                 SaveOtp.objects.create(phone_number=phone,otp=generated_otp)
@@ -238,8 +240,16 @@ class UpdatePersonalInfo(APIView):
             user.save()
         """GETTING IDENTIFICATION"""
         contact=get_object_or_404(Identification, userdetail=user)
+        """GETTING PROFILE FOR GENDER DOB"""
+        profile=get_object_or_404(Profile,contact=contact)
         
-        
+        if data.get('dob'):
+            profile.dob=data.get('dob')
+            profile.save()
+        if data.get('gender'):
+            profile.gender=data.get('gender')
+            profile.save()
+            
         
         serializers=IdentificationSerializers(contact,data=data,partial=True)
         if serializers.is_valid():
@@ -254,14 +264,14 @@ class UpdatePersonalInfo(APIView):
 class User_Profile(APIView):
     def get(self,request,format=None):
         username_id=request.GET.get('user_id')
-        shwo_profile=request.GET.get('requested_user_id')
-        if username_id:
-            userid=Q(id=username_id)
-        elif shwo_profile:
-            userid=Q(id=shwo_profile)
-        user=get_object_or_404(User,userid)
+        requestedprofile=request.GET.get('requested_user_id')
+        if username_id is not None and requestedprofile is None:
+            query=Q(id=username_id)
+        elif username_id is not None and requestedprofile is not None:
+            query=Q(id=requestedprofile)
+        user=get_object_or_404(User,query)
         contact=user.identification_set.get(userdetail=user)
-        profile=contact.profile_set.get(contact=contact)
+        profile=Profile.objects.get(contact=contact)
 
         """getting all related news artical post by this user"""
         self_posted_NewArticals=user.newsarticalpost_set.all().count()
@@ -282,12 +292,15 @@ class User_Profile(APIView):
         self_posted_artical=user.articals_set.all().count()
         
         
+       
         
-        if username_id:
+        
+        if username_id is not None and requestedprofile is  None:
             status_data={
                 "bookmark_status":Category_Related_Job.objects.filter(bookmark__id=user.id).count(),
                 "jobs_like":Category_Related_Job.objects.filter(likes__id=user.id).count(),
                 "follow":profile.follow.filter(id=user.id).count(),
+                "followStatus":profile.follow.filter(id=user.id).exists(),
                 "following":Profile.objects.filter(follow=profile.contact.userdetail).count(),
                 "applied_jobs":Category_Related_Job.objects.filter(applicant=user.id).count() ,
 
@@ -309,9 +322,10 @@ class User_Profile(APIView):
                 
 
                 }
-        elif shwo_profile:
+        elif requestedprofile is not None  and username_id is not None:
             status_data={
-                "follow":profile.follow.filter(id=user.id).count(),
+                "follow":profile.follow.count(),
+                "followStatus":profile.follow.filter(id=username_id).exists(),
                 "following":Profile.objects.filter(follow=profile.contact.userdetail).count(),
                 "applied_jobs":Category_Related_Job.objects.filter(applicant=user.id).count() ,
                 "case_like":self_posted_cases,
@@ -398,48 +412,16 @@ class User_Profile(APIView):
 """api/user/profession/info"""
 class ProfessionalInfo(APIView):
     def get(self,request):
-       
-        list_of_ug_degree=['MBBS','BDS','BAMS','BUMS','BHMS','BYNS','B.V.Sc & AH']
-        list_of_pg_degree=['Anaesthesiology','Biochemistry','Community Health','Dermatology',
-                            'Family Medicine','Forensic Medicine','General Medicine','Microbiology','Paediatrics',
-                            'Palliative Medicine','Pathology','Skin and Venereal diseases','Ear, Nose and Throat',
-                            'General Surgery','Ophthalmology','Orthopaedics','Obstetrics and Gynaecology',
-                            'Dermatology, Venerology and Leprosy'
-                            ]
-        ug_of_institute=['KIMS-Krishna Institute of Medical','Osmania Medical College',
-                            'ESIC Medical College, Hyderabad',"Dr. Patnam Mahender Reddy",
-                            'Mamata Academy of Medical','Government Medical College',
-                            'Mahavir Institute of Medical Science','Surabhi Institute of Medical Science'
-                            ]
-        pg_of_institute=['GANDHI MEDICAL COLLEGE','Osmania Medical College',
-                            'NIZAMS INSTITUTE OF MEDICAL SCIENCES',"KAKATIYA MEDICAL COLLEGE",
-                            'DECCAN COLLEGE OF MEDICAL SCIENCES','KAMINENI INSTITUTE OF MEDICAL SCIENCES',
-                            'SVS MEDICAL COLLEGE','MAMATA MEDICAL COLLEGE','MALLA REDDY INSTITUTE OF MEDICAL SCIENCES',
-                            'BHASKAR MEDICAL COLLEGE','SHADAN INSTITUTE OF MEDICAL SCIENCES, RESEARCH CENTRE AND TEACHING HOSPITAL',
-                            'MEDICITI INSTITUTE OF MEDICAL SCIENCES','MNR MEDICAL COLLEGE AND HOSPITAL','PRATHIMA INSTITUTE OF MEDICAL SCIENCES',
-                            'CHALMEDA ANAND RAO INSTITUTE OF MEDICAL SCIENCES'
-                            ]
-       
-        hightest_qualification=[ qual.qualification for qual in HigherQualification.objects.all() ] 
-               
-                                
-                                
-                                
-        department=[ dep.department_name for dep in Hospital_Department.objects.all()]
-       
+                                  
         response={
-           
             "ug_course":list_of_ug_degree,
             "pg_course":list_of_pg_degree,
-            "department":department,
+            "department":deparments,
             "ug_institute":ug_of_institute,
             "pg_institute":pg_of_institute,
-            "hightest_qualification":hightest_qualification   
+            "hightest_qualification":[ qual.qualification for qual in HigherQualification.objects.all() ]  
                 }
         return Response(response,status=200)
-
-
-
 
 
 
@@ -553,9 +535,51 @@ class UserResumeUpload(APIView):
         return Response({"message":"file deleted","status":True},status=200) 
 
 
+"""BASED ON SPECIALITY CURRENT JOB LOCATION AND QUELIFICATION MATCH PEOPLE SIMILAR"""
+class MatchPeople(APIView):
+    def get(self,request):
+        userid=request.GET.get('user_id')
+        requesteduserid=request.GET.get('requested_user_id')
+        response={}
+        userdata=Identification.objects.get(userdetail__id=userid)
+        
+        query=Q( ~Q(userdetail__id=userdata.userdetail.id)
+                
+                    &
+                    Q(
+                        Q(current_job_location=userdata.current_job_location)
+                        |
+                        Q(speciality=userdata.speciality)
+                        |
+                        Q(hightest_qualification=userdata.hightest_qualification)
+                    )
+            
+            
+                )
+        matcheddata=Identification.objects.select_related('userdetail').filter(query).order_by("-id")
+        
+        for match in matcheddata:
+            
+            followstatus=match.profile_set.filter(follow=userdata.userdetail)
 
+            if followstatus.exists()==False and int(requesteduserid) != match.userdetail.id: 
+                serializer=IdentificationSerializers(match,many=False).data 
+                try:
+                    profileimage=Profile.objects.get(contact=match)
+                    serializer["ProfileImage"]=profileimage.image.url
+                except Exception as e:
+                    serializer["ProfileImage"]="no_image"
 
+               
+                serializer["follow"]=False
+                
+                response[match.id]=serializer  
+            else:
+                pass
+            
+        return Response(response.values(),status=status.HTTP_200_OK)
 
+####################################IOS#################################
 """ API FOR PROFILE ISO"""
 
 """api/user/profile/?user_id=12"""
@@ -681,7 +705,7 @@ class CollegeStoryPost(APIView):
         return Response({"message":serializer.errors,"status":False},status=400)
 
 """ END IOS CASE POST"""
-
+#################################IOS END###############################
 
 
 ############################################################################
@@ -690,41 +714,52 @@ class CollegeStoryPost(APIView):
 """api/user/case?user=171"""
 class User_Posted_Case(APIView):
     def get(Self,request):
-        query=request.query_params
+        #query=request.query_params
+        userID=request.GET.get('user_id')
+        usernameid=request.GET.get('userid')
         
         response={}
-        if query['user_id']:
-            user=get_object_or_404(User,id=query['user_id'])
-            cases=user.complaint_set.all()
-            for case in cases:
-                status_data={
-                    "bookmark_count":case.bookmark.count(),
-                    "bookmark_status":case.bookmark.filter(id=user.id).exists(),
-                    "like_count":case.likes.count(),
-                    "like_status":case.likes.filter(id=user.id).exists(),
+        if userID is not None:
+            user=get_object_or_404(User,id=userID)
+            query=Q(complaint_id=user)
+            
 
-                            }
-
-                serializer=ComplaintSerializers(case,many=False).data
-                profile=Profile.objects.get(contact__userdetail__id=case.complaint_id.id)
-                
-                serializer.update(
-                                {
-                                    
-                                    "username":profile.contact.profile_name,
-                                    "current_job_location":profile.contact.current_job_location,
-                                    "speciality":profile.contact.speciality,
-                                    "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
-                                    "discussions":case.discussions_set.all().count(),
-                                    "follow":"uploader"
-                                    
-                                })
-                serializer.update(status_data)
-                response[case.id]=serializer
-            return Response(response.values(),status=status.HTTP_200_OK)
+        elif usernameid is not None  :
+            user=get_object_or_404(User,id=usernameid)
+            query=Q(created_date__lte=date.today())
         else:
-            return Response({"message":"something error"},status=status.status.HTTP_400_BAD_REQUEST)
+            return Response({"message":"key errors","status":False},status=404)
+        cases=Complaint.objects.filter(query).order_by("-created_date")
+        for case in cases:
+            status_data={
+                "bookmark_count":case.bookmark.count(),
+                "bookmark_status":case.bookmark.filter(id=user.id).exists() if userID is not None or usernameid is not None else False,
+                "like_count":case.likes.count(),
+                "like_status":case.likes.filter(id=user.id).exists() if userID is not None or usernameid is not None else False,
+
+                        }
+
+            serializer=ComplaintSerializers(case,many=False).data
+            profile=Profile.objects.get(contact__userdetail__id=case.complaint_id.id)
+            serializer["ProfileName"]=profile.contact.profile_name
+            serializer["current_job_location"]=profile.contact.current_job_location
+            serializer["speciality"]=profile.contact.speciality
+            serializer["hightest_qualification"]=profile.contact.hightest_qualification
+            serializer["ProfileImage"]=profile.profileImage.url if profile.profileImage else "no image"
+            serializer["discussions"]=case.discussions_set.all().count()
+            serializer["follow"]="uploader"
+            serializer["poll_status"]=False
+            serializer["art_status"]=False
+            serializer['PG_NEET']=False
+            serializer['newsartical']=False
+            serializer['SS_NEET']=False
+            serializer["complaint_status"]=True 
+            serializer["userid"]=case.complaint_id.id               
+            
+            serializer.update(status_data)
+            response[case.id]=serializer
+        return Response(response.values(),status=status.HTTP_200_OK)
+        
 
 """HOW MANY CASE BOOKMARK BY PARTICULAR USER"""
 """api/user/case/bookmarks?user_id=171"""
@@ -749,11 +784,11 @@ class User_Bookmark_Case(APIView):
                 serializer.update(
                                     {
                                
-                                "username":profile.contact.profile_name,
+                                "ProfileName":profile.contact.profile_name,
                                 "current_job_location":profile.contact.current_job_location,
                                 "speciality":profile.contact.speciality,
                                 "hightest_qualification":profile.contact.hightest_qualification,
-                                "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                 "discussions":case.discussions_set.all().count(),
                                 "follow":"uploader"
                                     }
@@ -786,11 +821,11 @@ class User_Like_Case(APIView):
                 serializer=ComplaintSerializers(case,many=False).data
                 serializer.update(
                                     {
-                                        "username":profile.contact.profile_name,
+                                        "ProfileName":profile.contact.profile_name,
                                         "current_job_location":profile.contact.current_job_location,
                                         "speciality":profile.contact.speciality,
                                         "hightest_qualification":profile.contact.hightest_qualification,
-                                        "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                        "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                         "discussions":case.discussions_set.all().count(),
                                         "follow":"uploader"
 
@@ -825,11 +860,11 @@ class User_Posted_News(APIView):
                 serializer=NewsArticalPostSerializers(newspost,many=False).data
                 serializer.update(
                                 {
-                                    "username":profile.contact.profile_name,
+                                    "ProfileName":profile.contact.profile_name,
                                     "current_job_location":profile.contact.current_job_location,
                                     "speciality":profile.contact.speciality,
                                     "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                    "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                     "follow":"uploader"
                                 })
                 serializer.update(status_data)
@@ -859,11 +894,11 @@ class User_News_Bookmarks(APIView):
                 profile=Profile.objects.get(contact__userdetail__id=newspost.userid.id)
                 serializer=NewsArticalPostSerializers(newspost,many=False).data
                 serializer.update({
-                                    "username":profile.contact.profile_name,
+                                    "ProfileName":profile.contact.profile_name,
                                     "current_job_location":profile.contact.current_job_location,
                                     "speciality":profile.contact.speciality,
                                     "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                    "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                     
                                     })
                 serializer.update(status_data)
@@ -894,11 +929,11 @@ class User_News_LIke(APIView):
                 serializer=NewsArticalPostSerializers(newspost,many=False).data
                 serializer.update(
                                 {
-                                    "username":profile.contact.profile_name,
+                                    "ProfileName":profile.contact.profile_name,
                                     "current_job_location":profile.contact.current_job_location,
                                     "speciality":profile.contact.speciality,
                                     "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                    "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                 })
                 serializer.update(status_data)
                 response[newspost.id]=serializer
@@ -910,39 +945,47 @@ class User_News_LIke(APIView):
 """HOW MANY ARTICAL POSTED BY PARTICULAR USER"""
 class User_Posted_Artical(APIView):
     def get(Self,request):
-        query=request.query_params
+        userid=request.GET.get('user_id')
+        usernameid=request.GET.get('userid')
         
         response={}
-        if query['user_id']:
-            user=get_object_or_404(User,id=query['user_id'])
-            articals=user.articals_set.all()
-            for artical in articals:
-                status_data={
-                    "bookmark_count":artical.bookmark.count(),
-                    "bookmark_status":artical.bookmark.filter(id=user.id).exists(),
-                    "like_count":artical.likes.count(),
-                    "like_status":artical.likes.filter(id=user.id).exists(),
-
-                            }
-
-                serializer=ArticalsSerializers(artical,many=False).data
-                profile=Profile.objects.get(contact__userdetail__id=artical.user.id)
-                
-                serializer.update(
-                                {
-                                    "username":profile.contact.profile_name,
-                                    "current_job_location":profile.contact.current_job_location,
-                                    "speciality":profile.contact.speciality,
-                                    "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
-                                    "follow":"uploader"
-                                    
-                                })
-                serializer.update(status_data)
-                response[artical.id]=serializer
-            return Response(response.values(),status=status.HTTP_200_OK)
+        if userid is not None:
+            user=get_object_or_404(User,id=userid)
+            query=Q(user=user)
+        elif usernameid is not  None:
+            user=get_object_or_404(User,id=usernameid)
+            query=Q(created_date__lte=date.today())
         else:
-            return Response({"message":"something error"},status=status.status.HTTP_400_BAD_REQUEST)
+            return Response({"message":"key error","status":False},status=404)
+        articals=Articals.objects.filter(query).order_by('-created_date')
+        for artical in articals:
+            status_data={
+                "bookmark_count":artical.bookmark.count(),
+                "bookmark_status":artical.bookmark.filter(id=user.id).exists() if userid is not None or usernameid is not  None  else False,
+                "like_count":artical.likes.count(),
+                "like_status":artical.likes.filter(id=user.id).exists() if userid is not None or usernameid is not  None else False,
+
+                        }
+
+            serializer=ArticalsSerializers(artical,many=False).data
+            profile=Profile.objects.get(contact__userdetail__id=artical.user.id)
+            serializer['ProfileName']=profile.contact.profile_name
+            serializer['current_job_location']=profile.contact.current_job_location
+            serializer['speciality']=profile.contact.speciality
+            serializer['hightest_qualification']=profile.contact.hightest_qualification
+            serializer['ProfileImage']=profile.profileImage.url if profile.profileImage else "no image"
+            serializer['follow']="uploader"
+            serializer['poll_status']=False
+            serializer['art_status']=True 
+            serializer['PG_NEET']=False
+            serializer['newsartical']=False
+            serializer['SS_NEET']=False
+            serializer['complaint_status']=False
+            serializer['userid']=artical.user.id
+            serializer.update(status_data)
+            response[artical.id]=serializer
+        return Response(response.values(),status=status.HTTP_200_OK)
+       
 
 
 """HOW MANY  ARTICAL BOOKMARK BY PARTICULAR USER"""
@@ -965,11 +1008,11 @@ class User_Artical_Bookmarks(APIView):
                 profile=Profile.objects.get(contact__userdetail__id=artical.user.id)
                 serializer=ArticalsSerializers(artical,many=False).data
                 serializer.update({
-                        "username":profile.contact.profile_name,
+                        "ProfileName":profile.contact.profile_name,
                         "current_job_location":profile.contact.current_job_location,
                         "speciality":profile.contact.speciality,
                         "hightest_qualification":profile.contact.hightest_qualification,
-                        "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                        "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                         
                         })
                 serializer.update(status_data)
@@ -989,25 +1032,21 @@ class User_Artical_LIke(APIView):
             user=get_object_or_404(User,id=query['user_id'])
             articals=Articals.objects.filter(likes=user)
             for artical in articals:
-                status_data={
-                    "bookmark_count":artical.bookmark.all().count(),
-                    "bookmark_status":artical.bookmark.filter(id=user.id).exists(),
-                    "like_count":artical.likes.count(),
-                    "like_status":artical.likes.filter(id=user.id).exists(),
-
-                            }
-               
+                
                 serializer=ArticalsSerializers(artical,many=False).data
                 profile=Profile.objects.get(contact__userdetail__id=artical.user.id)
-                serializer.update({
-                                    "username":profile.contact.profile_name,
-                                    "current_job_location":profile.contact.current_job_location,
-                                    "speciality":profile.contact.speciality,
-                                    "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
-
-                                    })
-                serializer.update(status_data)
+                serializer['ProfileName']=profile.contact.profile_name
+                serializer['current_job_location']=profile.contact.current_job_location
+                serializer['speciality']=profile.contact.speciality
+                serializer['hightest_qualification']=profile.contact.hightest_qualification
+                serializer['ProfileImage']=profile.profileImage.url if profile.profileImage else "no image"
+                serializer['bookmark_count']=artical.bookmark.all().count()
+                serializer['bookmark_status']=artical.bookmark.filter(id=user.id).exists()
+                serializer['like_count']=artical.likes.count()
+                serializer['like_status']=artical.likes.filter(id=user.id).exists()
+                
+                
+                
                 response[artical.id]=serializer
             return Response(response.values(),status=status.HTTP_200_OK)
         else:
@@ -1038,11 +1077,11 @@ class User_College_Story_Posted(APIView):
                 
                 serializer.update(
                                 {
-                                    "username":profile.contact.profile_name,
+                                    "ProfileName":profile.contact.profile_name,
                                     "current_job_location":profile.contact.current_job_location,
                                     "speciality":profile.contact.speciality,
                                     "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                    "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                     "follow":"uploader"
                                     
                                 })
@@ -1076,11 +1115,11 @@ class User_College_Stroy_Bookmarks(APIView):
                 
                 serializer.update(
                                 {
-                                    "username":profile.contact.profile_name,
+                                    "ProfileName":profile.contact.profile_name,
                                     "current_job_location":profile.contact.current_job_location,
                                     "speciality":profile.contact.speciality,
                                     "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                    "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                     "follow":"uploader"
                                     
                                 })
@@ -1114,11 +1153,11 @@ class User_College_Story_LIke(APIView):
                 
                 serializer.update(
                                 {
-                                    "username":profile.contact.profile_name,
+                                    "ProfileName":profile.contact.profile_name,
                                     "current_job_location":profile.contact.current_job_location,
                                     "speciality":profile.contact.speciality,
                                     "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                    "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                     "follow":"uploader"
                                     
                                 })
@@ -1134,47 +1173,86 @@ class User_College_Story_LIke(APIView):
 """HOW MANY POLL POSTED BY PARTICULAR USER"""
 class User_Poll_Posted(APIView):
     def get(Self,request):
-        query=request.query_params
+        userid=request.GET.get('user_id')
+        usernameid=request.GET.get('userid')
         
         response={}
-        if query['user_id']:
-            user=get_object_or_404(User,id=query['user_id'])
-            polls=user.poll_set.all()
-            for poll in polls:
-                user_poll_status=poll.pollvote_set.filter(profile=user)
-                status_data={
-                    "bookmark_count":poll.bookmark.count(),
-                    "bookmark_status":poll.bookmark.filter(id=user.id).exists(),
-                    "like_count":poll.likes.count(),
-                    "like_status":poll.likes.filter(id=user.id).exists(),
-                    "user_status":user_poll_status.exists(),
-                    "vote":poll.pollvote_set.all().count(),
-                    "A":poll.pollvote_set.filter(choice="A").count(),
-                    "B":poll.pollvote_set.filter(choice="B").count(),
-                    "C":poll.pollvote_set.filter(choice="C").count(),
-                    "D":poll.pollvote_set.filter(choice="D").count(),
-                    "choice": user_poll_status[0].choice if user_poll_status.exists() else "no_opinion"
-
-                            }
-
-                serializer=PollSerializers(poll,many=False).data
-                profile=Profile.objects.get(contact__userdetail__id=poll.poll_user.id)
+        if userid is not None:
+            user=get_object_or_404(User,id=userid)
+            query=Q(poll_user=user)
+        elif usernameid is not None:
+            user=get_object_or_404(User,id=usernameid)
+            query=Q(created_date__lte=date.today())
+        else :
+            query=Q(created_date__lte=date.today())
+            #return Response({"message":"key error","status":False})
+        
+        polls=Poll.objects.filter(query).order_by('-created_date')
+        
+        for poll in polls:
+            
+            try:
+                user_poll_status=PollVote.objects.get(poll_id=poll,profile=user)
                 
-                serializer.update(
-                                {
-                                    "username":profile.contact.profile_name,
-                                    "current_job_location":profile.contact.current_job_location,
-                                    "speciality":profile.contact.speciality,
-                                    "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
-                                    "follow":"uploader"
-                                    
-                                })
-                serializer.update(status_data)
-                response[poll.id]=serializer
-            return Response(response.values(),status=status.HTTP_200_OK)
-        else:
-            return Response({"message":"something error"},status=status.status.HTTP_400_BAD_REQUEST)
+                userstatus={
+                        "user_status":True,
+                        "choice": user_poll_status.choice 
+                        }
+            except Exception as e:
+                userstatus={
+                        "user_status":False,
+                        "choice": "no_opinion"
+                        }
+           
+            tvote=poll.pollvote_set.all().count()
+            vote=PollVote.objects.aggregate(
+                        # TOTAL=Count()
+                        A=Count('pk', filter=Q(poll_id=poll,choice="A")),
+                        B=Count('pk', filter=Q(poll_id=poll,choice="B")),
+                        C=Count('pk', filter=Q(poll_id=poll,choice="C")),
+                        D=Count('pk', filter=Q(poll_id=poll,choice="D"))
+
+                                        )
+            
+            status_data={
+                "bookmark_count":poll.bookmark.count(),
+                "bookmark_status":poll.bookmark.filter(id=user.id).exists() if userid is not None or usernameid is not None  else False ,
+                "like_count":poll.likes.count(),
+                "like_status":poll.likes.filter(id=user.id).exists() if userid is not None or usernameid is not None else False,
+               
+                "vote":tvote,
+                "A": vote["A"] if vote["A"]==0 else int((vote["A"]/tvote)*100 ),
+                "B": vote["B"] if vote["B"]==0 else int((vote["B"]/tvote)*100),
+                "C": vote["C"] if vote["C"]==0 else int((vote["C"]/tvote)*100),
+                "D": vote["D"] if vote["D"]==0 else int((vote["D"]/tvote)*100),
+                
+                "discussion":poll.pollcomment_set.count()
+
+                        }
+           
+            status_data.update(userstatus)
+
+            serializer=PollSerializers(poll,many=False).data
+            profile=Profile.objects.get(contact__userdetail__id=poll.poll_user.id)
+            serializer['ProfileName']=profile.contact.profile_name
+            serializer['current_job_location']=profile.contact.current_job_location
+            serializer['speciality']=profile.contact.speciality
+            serializer['hightest_qualification']=profile.contact.hightest_qualification
+            serializer['ProfileImage']=profile.profileImage.url if profile.profileImage else "no image"
+            serializer['follow']="uploader"
+            serializer['poll_status']=True
+            serializer['art_status']=False
+            serializer['PG_NEET']=False
+            serializer['newsartical']=False
+            serializer['SS_NEET']=False
+            serializer['complaint_status']=False
+            serializer["userid"]=poll.poll_user.id
+            serializer.update(status_data)
+            response[poll.id]=serializer
+        return Response(response.values(),status=status.HTTP_200_OK)
+        
+
+
 
 
 
@@ -1182,24 +1260,32 @@ class User_Poll_Posted(APIView):
 class User_Poll_Bookmarks(APIView):
     def get(self,request):
         query=request.query_params
-        print(query['user_id'])
+        
         response={}
         if query['user_id']:
             user=get_object_or_404(User,id=query['user_id'])
             polls=Poll.objects.filter(bookmark=user)
             for poll in polls:
                 user_poll_status=poll.pollvote_set.filter(profile=user)
+
+                vote=poll.pollvote_set.aggregate(
+                            TOTAL=Count('poll_id'), 
+                            A=Count('pk', filter=Q(choice="A")),
+                            B=Count('pk', filter=Q(choice="B")),
+                            C=Count('pk', filter=Q(choice="C")),
+                            D=Count('pk', filter=Q(choice="D")),
+                        )
                 status_data={
                     "bookmark_count":poll.bookmark.all().count(),
                     "bookmark_status":poll.bookmark.filter(id=user.id).exists(),
                     "like_count":poll.likes.count(),
                     "like_status":poll.likes.filter(id=user.id).exists(),
                     "user_status":user_poll_status.exists(),
-                    "vote":poll.pollvote_set.all().count(),
-                    "A":poll.pollvote_set.filter(choice="A").count(),
-                    "B":poll.pollvote_set.filter(choice="B").count(),
-                    "C":poll.pollvote_set.filter(choice="C").count(),
-                    "D":poll.pollvote_set.filter(choice="D").count(),
+                    "vote":vote["TOTAL"],
+                    "A": vote["A"] if vote["A"]==0 else int((vote["A"]/vote["TOTAL"])*100),
+                    "B": vote["B"] if vote["B"]==0 else int((vote["B"]/vote["TOTAL"])*100),
+                    "C": vote["C"] if vote["C"]==0 else int((vote["C"]/vote["TOTAL"])*100),
+                    "D": vote["D"] if vote["D"]==0 else int((vote["D"]/vote["TOTAL"])*100),
                     "choice": user_poll_status[0].choice if user_poll_status.exists() else "no_opinion"
 
                             }
@@ -1210,11 +1296,11 @@ class User_Poll_Bookmarks(APIView):
                 serializer.update(
                                 {
                                    
-                                    "username":profile.contact.profile_name,
+                                    "ProfileName":profile.contact.profile_name,
                                     "current_job_location":profile.contact.current_job_location,
                                     "speciality":profile.contact.speciality,
                                     "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                    "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                     "follow":"uploader"
                                     
                                 })
@@ -1236,17 +1322,25 @@ class User_Poll_LIke(APIView):
             polls=Poll.objects.filter(likes=user)
             for poll in polls:
                 user_poll_status=poll.pollvote_set.filter(profile=user)
+                vote=poll.pollvote_set.aggregate(
+                            TOTAL=Count('poll_id'), 
+                            A=Count('pk', filter=Q(choice="A")),
+                            B=Count('pk', filter=Q(choice="B")),
+                            C=Count('pk', filter=Q(choice="C")),
+                            D=Count('pk', filter=Q(choice="D")),
+                        )
+
                 status_data={
                     "bookmark_count":poll.bookmark.all().count(),
                     "bookmark_status":poll.bookmark.filter(id=user.id).exists(),
                     "like_count":poll.likes.count(),
                     "like_status":poll.likes.filter(id=user.id).exists(),
                     "user_status":user_poll_status.exists(),
-                    "vote":poll.pollvote_set.all().count(),
-                    "A":poll.pollvote_set.filter(choice="A").count(),
-                    "B":poll.pollvote_set.filter(choice="B").count(),
-                    "C":poll.pollvote_set.filter(choice="C").count(),
-                    "D":poll.pollvote_set.filter(choice="D").count(),
+                    "vote":vote["TOTAL"],
+                    "A": vote["A"] if vote["A"]==0 else int((vote["A"]/vote["TOTAL"])*100),
+                    "B": vote["B"] if vote["B"]==0 else int((vote["B"]/vote["TOTAL"])*100),
+                    "C": vote["C"] if vote["C"]==0 else int((vote["C"]/vote["TOTAL"])*100),
+                    "D": vote["D"] if vote["D"]==0 else int((vote["D"]/vote["TOTAL"])*100),
                     "choice": user_poll_status[0].choice if user_poll_status.exists() else "no_opinion"
                     
 
@@ -1257,11 +1351,11 @@ class User_Poll_LIke(APIView):
                 
                 serializer.update(
                                 {
-                                    "username":profile.contact.profile_name,
+                                    "ProfileName":profile.contact.profile_name,
                                     "current_job_location":profile.contact.current_job_location,
                                     "speciality":profile.contact.speciality,
                                     "hightest_qualification":profile.contact.hightest_qualification,
-                                    "profile_image":profile.profileImage.url if profile.profileImage else "no image",
+                                    "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
                                     "follow":"uploader"
                                     
                                 })  
@@ -1275,103 +1369,12 @@ class User_Poll_LIke(APIView):
 
 
 
-"""api/subject/"""
-'''job show by all course and search by course'''
-class Subjects(APIView):
-    
-    def get(self,request,format=None):
-        
-        course_name=request.GET.get('course')
-        username_id=request.GET.get('user_id')
-        location=request.GET.get('location').split(",") if request.GET.get('location') is not None else request.GET.get('location')
-
-        resp={}
-       
-        if course_name :
-            if course_name and location:
-               user_query=Q(course__iexact=course_name,location__in=location)
-            elif course_name and username_id:
-                user_query=Q(course__iexact=course_name)
-            
-            user=get_object_or_404(User,id=username_id)
-
-            job_category=Category_Related_Job.objects.filter(user_query).order_by('-created_date')
-            
-            
-            for category in job_category:
-                serializer=Category_Related_JobSerializers(category,many=False).data
-                resp[category.id]=serializer
-               
-                resp[category.id].update({
-                    "bookmark_status":category.bookmark.filter(id=user.id).exists(),
-                    "like_status":category.likes.filter(id=user.id).exists(), 
-                    "apply_status":category.applicant.filter(id=user.id).exists(),
-                        })
-                
-            return Response(resp.values(),status=200)
-        
-        else:
-            subject=list(Subject.objects.all())
-           
-            for sub in subject:
-                category=sub.category_releted_job_set.all()
-               
-                if category:    
-                    resp[sub.id]={
-                        "id":sub.id,
-                        "course":sub.name,
-                        "image":sub.image.url if sub.image else "image not avaialble",
-                        "total":category.count()
-                    }
-            return Response(resp.values(),status=200)
-            
-
-    def post(self,request,format=None):
-        data=request.data 
-        serializers=SubjectSerializers(data=data)
-        if serializers.is_valid():
-            serializers.save()
-            return Response(serializers.data,status=201)
-        return Response(serializers.errors,status=200)
-
-
-    def put (self,request,format="json"):
-        data=request.data 
-        subjectId=request.GET.get('subjectid')
-        if subjectId:
-            try:
-                subject=Subject.objects.get(id=subjectId)
-                if data.get('image'):
-                    subject.image.delete()
-                    subject.image=data.get('image')
-                serializers=SubjectSerializers(subject,data=data,partial=True)
-                if serializers.is_valid():
-                    serializers.save()
-                    return Response(serializers.data,status=200)
-                return Response(serializers.errors,status=400)
-            except Exception as e:
-                return Response({"message":"subject id not found","status":False},status=400)
-        else:
-            return Response({"message":"something you passing wrong","status":False},status=400)
-    
-    def delete (self,request):
-        data=request.data 
-        subjectId=request.GET.get('subjectid')
-        if subjectId:
-            try:
-                subject=Subject.objects.get(id=subjectId).delete()
-                return Response({"message":"subject id deleted successfully","status":True},status=200)
-            except Exception as e:
-                 return Response({"message":"subject id not found","exception":str(e),"status":False},status=400)
-        else:
-            return Response({"message":"something you passing wrong","status":False},status=400)
-
 
 
 
 '''api/job/category/'''
 '''category of job just like covid duety'''
-class New_Job_Category_Post(APIView):
+class Category(APIView):
     def get(self,request,format=None): 
         job_category=Job_By_Category.objects.all()
         return Response(Job_By_CategorySerializers(job_category,many=True).data,status=200)
@@ -1380,16 +1383,14 @@ class New_Job_Category_Post(APIView):
     
 '''api/new/job/'''
 '''new job post'''
-class New_Job_Post(APIView):
+class JobPost(APIView):
     
     def get(self,request):
-        data=request.data 
-        categoryId=request.GET.get('categoryid')
+        
         new_job_id=request.GET.get('jobid')
         username_id=request.GET.get('user_id')
-        location=request.GET.get('location').split(",") if request.GET.get('location') is not None else request.GET.get('location')
-        department=request.GET.get('department').split(",") if request.GET.get('department') is not None else request.GET.get('department')
-      
+        categoryId=request.GET.get('categoryid')
+        pagerequest=request.GET.get('page')
         resp={}
 
 
@@ -1398,49 +1399,9 @@ class New_Job_Post(APIView):
         except Exception as e:
             return Response({"message":"user not found","status":False},status=400)
         
-        if categoryId:
-            
-            try:
-                
-                category=Job_By_Category.objects.get(id=categoryId)
-            
-            except Exception as e:
-                
-                return Response({"message":"categoryid not exists","exception":str(e)},status=404) 
-            
-            if department and location:
-                user_query=Q(category__id=category.id,location__in=location,department__in=department)
-               
-            elif department:
-                user_query=Q(category__id=category.id,department__in=department)
-                
-                
-            elif location:
-               user_query=Q(category__id=category.id,location__in=location)
-               
-            else:
-
-                user_query=Q(category__id=category.id)
-
-            
-            
-            new_job=Category_Related_Job.objects.select_related('category').filter(user_query,job_status=True).order_by('-created_date')
-            
-            for categorys in new_job:
-             
-                serializer=Category_Related_JobSerializers(categorys,many=False).data
-                resp[categorys.id]=serializer
-               
-                resp[categorys.id].update({
-                        
-                            "bookmark":categorys.bookmark.filter(id=user.id).exists(),
-                            "likes":categorys.likes.filter(id=user.id).exists(), 
-                            "apply_status":categorys.applicant.filter(id=user.id).exists(),
-                                        })
-                
-            return Response(resp.values(),status=200)
         
-        elif new_job_id and username_id:
+        
+        if new_job_id is not None and username_id is not None:
            
             
             try:
@@ -1449,50 +1410,95 @@ class New_Job_Post(APIView):
                 return Response({"message":"job not exists","exception":str(e)},status=404) 
             
             serializer=Category_Related_JobSerializers(jobid,many=False).data
-           
-            serializer.update({
-                            "bookmark":jobid.bookmark.filter(id=user.id).exists(),
-                            "likes":jobid.likes.filter(id=user.id).exists(), 
-                            "apply_status":jobid.applicant.filter(id=user.id).exists(),
-                            })
+            serializer['eligibility']=[ {"name":i} for i in jobid.qualification.split(",")]
+            serializer["bookmark"]=jobid.bookmark.filter(id=user.id).exists()
+            serializer["likes"]=jobid.likes.filter(id=user.id).exists()
+            serializer["apply_status"]=jobid.applicant.filter(id=user.id).exists()
             return Response(serializer,status=200)  
-               
         
-        elif  username_id:
+        elif categoryId is not None and username_id is not None:
+               
             
-            
-            job_id=Category_Related_Job.objects.filter(job_status=True).order_by('-created_date')
-           
-            for category in job_id:
-                resp[category.id]=Category_Related_JobSerializers(category,many=False).data
-                resp[category.id].update({
-                        "bookmark":  category.bookmark.filter(id=username_id).exists() ,
-                        "likes":category.likes.filter(id=username_id).exists(), 
-                        "apply_status":category.applicant.filter(id=username_id).exists(),
-                                        })
+            try:
+                category=Job_By_Category.objects.get(id=categoryId)
                 
-            return Response(resp.values(),status=200)
+            except Exception as e:
+                return Response({"message":"category id not exists","exception":str(e)},status=404) 
+            
+            jobs=Category_Related_Job.objects.select_related('category').filter(category=category,job_status=True).order_by("-created_date")
+            for jobid in jobs:
+                serializer=CategoryRelatedJobSerializers(jobid,many=False).data
+                serializer['eligibility']=[ {"name":i} for i in jobid.qualification.split(",")]
+                serializer["bookmark"]=jobid.bookmark.filter(id=user.id).exists()
+                resp[jobid.id]=serializer  
+            pageitem = Paginator(list(resp.values()), 5) 
+            requestpage=pageitem.page(int(pagerequest)) 
+            return Response(requestpage.object_list,status=200)  
+             
+        elif  username_id is not None:
+            
+            department=Identification.objects.get(userdetail=user)
+            job_id=Category_Related_Job.objects.filter(job_status=True,Speciality=department.speciality).order_by('-created_date')
+          
+            for category in job_id:
+                
+                serializers=CategoryRelatedJobSerializers(category,many=False).data
+                serializers['bookmark']=category.bookmark.filter(id=username_id).exists()
+                serializers['eligibility']=[ {"name":i} for i in category.qualification.split(",")]
+                resp[category.id]=serializers
+            
+            jobs=Category_Related_Job.objects.filter( Q(job_status=True) & ~Q(Speciality=department.speciality) ).order_by('-created_date')
+            
+            for job in jobs:
+                serializers=CategoryRelatedJobSerializers(job,many=False).data
+                serializers['eligibility']=[ {"name":i} for i in job.qualification.split(",")]
+                serializers['bookmark']=job.bookmark.filter(id=username_id).exists()
+                resp[job.id]=serializers
+
+            pageitem = Paginator(list(resp.values()), 5) 
+            requestpage=pageitem.page(int(pagerequest)) 
+            
+            return Response(requestpage.object_list,status=200)
         else:
             return Response({"message":"Key errors something passing wrong","status":False},status=400)
             
-   
+"""RANDOM JOB SHOW EXCLUDE SELETED JOB ID"""   
+'''api/new/job/random?job_id=5&user_id=185'''
+'''new job post'''
+class RandomJobs(APIView):
     
-"""api/job/top/"""        
-class TopJob(APIView):
     def get(self,request):
+        
+        jobid=request.GET.get('job_id')
+        userid=request.GET.get('user_id')
         resp={}
-        username_id=request.GET.get('user_id')
-        job_id=Category_Related_Job.objects.filter(top_job=True).order_by('-created_date')
-       
-        for category in job_id:
-            resp[category.id]=Category_Related_JobSerializers(category,many=False).data
-            resp[category.id].update({
-                    "bookmark_status":  category.bookmark.filter(id=username_id).exists() ,
-                    "like_status":category.likes.filter(id=username_id).exists(), 
-                    "apply_status":category.applicant.filter(id=username_id).exists(),
-                                    })
-            
-        return Response(resp.values(),status=200)
+        try:
+            user=User.objects.get(id=userid)
+        except Exception as e:
+            return Response({"message":"user not found","status":False},status=400)
+        
+        try:
+            Category_Related_Job.objects.get(id=jobid)
+        except Exception as e:
+            return Response({"message":"job id not found","status":False},status=400)
+        
+    
+        if  userid is not None and jobid is not None :
+              
+            job_id=list(Category_Related_Job.objects.filter(job_status=True).exclude(id=jobid) )
+            random.shuffle(job_id)
+            for category in job_id:
+                serializers=Category_Related_JobSerializers(category,many=False).data
+                serializers['eligibility']=[ {"name":i} for i in category.qualification.split(",")]
+                serializers['apply_status']=category.applicant.filter(id=userid).exists()
+                serializers['likes']=category.likes.filter(id=userid).exists()
+                serializers['bookmark']=category.bookmark.filter(id=userid).exists()
+                resp[category.id]=serializers
+             
+            return Response(resp.values(),status=200)
+        else:
+            return Response({"message":"Key errors something passing wrong","status":False},status=400)   
+
 
 
 """"DESIGNATION GET POST """  
@@ -1531,7 +1537,7 @@ class City_Location(APIView):
         return Response(response.values(),status=200)
 
 
-from listdata.collegedata import *
+
 """UNDER GRADUCATION DEGREE"""
 class Under_Graduation_Degree_List(APIView):
     def get(self,request):
@@ -1582,16 +1588,14 @@ class Post_Graduation_Degree_institute_List(APIView):
 class Specility_Department_list(APIView):
     def get(self,request):
         response={}
-        H_and_D=Hospital_Department.objects.all()
-        for hd in H_and_D:
+        for i in range(len(deparments)):  
+            response[i]={
+                "id":i+1,
+                "department":deparments[i],
                 
-            response[hd.id]={
-                "id":hd.id,
-                "department":hd.department_name,
-                
-            }
-           
+            } 
         return Response(response.values())
+    
 
 """GENDER """
 class Gender(APIView):
@@ -1614,6 +1618,31 @@ class Languages(APIView):
                 "language":language[i]
             }
         return Response(response.values())
+
+
+"""HOSPITAL TYPE LIST"""
+class Hospital_Type_Lists(APIView):
+    def get(self,request):
+        HT= Hospital_Type.objects.all()
+        serializers=HospitalTypeSerializer(HT,many=True)
+        return Response(serializers.data)
+
+class CategoriesData(APIView):
+    def get(self,request,):
+        category=request.GET.get('category')
+        for i in categories:
+            if i.get(category):
+                return Response(i[category])
+        return Response({"message":"category name not found","name":category})
+                
+
+class CategoryDesignation(APIView):
+    def get(self,request,category):
+        for i in categoryDesignation:
+            if i.get(category):
+                return Response(i[category])
+        return Response({"message":"Category has no any designation wait for update","name":category,"status":False})
+
 
 #############################LIKE BOOKMARK FOLLOW AND UNFOLLOW######################################
 
@@ -1741,17 +1770,19 @@ class BookMark(APIView):
        
         job_categorys=Category_Related_Job.objects.filter(bookmark=user)
         
-        for category in job_categorys:
-            
-            serializer=Category_Related_JobSerializers(category,many=False).data
-            resp[category.id]=serializer
-            resp[category.id].update({
-                "bookmark":category.bookmark.filter(id=user.id).exists(),
-                "likes":category.likes.filter(id=user.id).exists(), 
-                "apply_status":category.applicant.filter(id=user.id).exists(),
-                })
-           
-        return Response(resp.values(),status=200)
+        if not job_categorys.exists():
+            return Response(resp.values(),status=200)
+
+        else:
+            for category in job_categorys:
+                
+                serializer=Category_Related_JobSerializers(category,many=False).data
+                serializer['eligibility']=[ {"name":i} for i in category.qualification.split(",")]
+                serializer["bookmark"]=category.bookmark.filter(id=user.id).exists()
+                serializer["likes"]=category.likes.filter(id=user.id).exists()
+                serializer["apply_status"]=category.applicant.filter(id=user.id).exists()
+                resp[category.id]=serializer
+            return Response(resp.values(),status=200)
        
            
     
@@ -1921,17 +1952,12 @@ class Jobs_Applies(APIView):
         for category in job_categorys:
             
             serializer=Category_Related_JobSerializers(category,many=False).data
+            serializer["bookmark_status"]=category.bookmark.filter(id=user.id).exists()
+            serializer["like_status"]=category.likes.filter(id=user.id).exists()
+            serializer["apply_status"]=category.applicant.filter(id=user.id).exists()
+
             resp[category.id]=serializer
-            like=category.likes.filter(id=user.id)
-            bookmark=category.bookmark.filter(id=user.id)
-            apply=category.applicant.filter(id=user.id)
-            resp[category.id].update({
-                "bookmark_status":bookmark.exists(),
-                "like_status":like.exists(), 
-                "apply_status":apply.exists(),
-                })
             
-           
         return Response(resp.values(),status=200)
     
     def post(self,request,format="json"):
@@ -1955,49 +1981,8 @@ class Jobs_Applies(APIView):
             return Response({"apply_status":True,"status":True},status=200)
         return Response({"message":"error find check and try again","status":True},status=400)
         
-class News_Category(APIView):
-    def get(self,request):
-        
-        return Response(CategorySerializers(Category.objects.filter(status=True),many=True).data,status=200)
-
-class Related_TO_News_Category(APIView):
-    
-    def get(self,request):
-        category_id=request.GET.get('categoryid')
-        news_id=request.GET.get('newsid')
-        response={}
-        if category_id:
-            try:
-                news_category=Category.objects.get(id=category_id,status=True)
-            except Exception as e:
-                return Response({"message":str(e),"status":False},status=status.HTTP_400_BAD_REQUEST)
-            serializers1=CategorySerializers(news_category,many=False).data 
-            news=news_category.newsartical_set.filter(visiable=True).order_by('-created_date')
-           
-            
-            for n in news:
-                response[n.id]=NewsArticalSerializers(n,many=False).data
-                response[n.id].update({"category":news_category.news_title})
-           
-            
-            return Response(response.values(),status=200)
-        elif news_id:
-            news=NewsArtical.objects.get(id=news_id)
-            serializers1=NewsArticalSerializers(news,many=False).data
-            response[news.id]=serializers1
-            response[news.id].update({"category":news.news.news_title})
-            
-            return Response(response.values(),status=200)
-        
-        else:
-            return Response({"message":"something error wait for update"},status=400)
 
 
-
-
-
-
- 
 """POLL POST ,VOTE FOR POLL AND COMMENT ON POLL API START HERE"""
 class News_Poll(APIView):
     def get(self,request):
@@ -2018,8 +2003,7 @@ class News_Poll(APIView):
         data=request.data 
         if not request.POST._mutable:
             request.POST._mutable = True
-        # data = ast.literal_eval(request.data['registerdata'])
-        # data['poll_image']=request.FILES['poll_image']
+      
         data=request.data
         serializer=PollSerializers(data=data)
         if serializer.is_valid():
@@ -2290,12 +2274,6 @@ class Poll_Comment(APIView):
 
 
 """POLL ,VOTE,COMMENT API END HERE"""
-
-
-
-
-
-
 class College_Storires(APIView):
     def get(self,request):
         college_name=['Osmania Medical College','Kamineni Academy of Medical Sciences and Research Centre','Gandhi Medical College']
@@ -2331,31 +2309,37 @@ class News_Artical_Post(APIView):
             return Response({"message":str(e)})
         if newsarticalId:
             query_set=Q(id=newsarticalId)
-            print("if part",query_set)
+            
         else:
             query_set=Q(created_date__date__lte=date.today())
-            print("elsepart",query_set)
+           
         newsartical=NewsArticalPost.objects.select_related('userid').filter(query_set).order_by('-created_date')
         print(newsartical)
         for artical in newsartical:
             serializer=NewsArticalPostSerializers(artical,many=False).data
-            profile=Profile.objects.select_related('contact').get(contact__userdetail__id=artical.userid.id)
+           
             
             
             response[artical.id]=serializer
-           
-            response[artical.id].update({
-                "username":profile.contact.profile_name,
-                "profileImage":profile.profileImage.url if profile.profileImage else "no image"
-            })
-            response[artical.id].update({
-                "bookmark_status":artical.bookmark.filter(id=user.id).exists(),
-                "bookmark_count":artical.bookmark.all().count(),
-                "like_status":artical.likes.filter(id=user.id).exists(),
-                "like_count":artical.likes.all().count(),
-                "follow":profile.follow.filter(id=user.id).exists()
-                
+            try:
+                profile=Profile.objects.select_related('contact').get(contact__userdetail__id=artical.userid.id)
+            except Exception as e:
+                pass
+            else:
+                response[artical.id].update({
+                    "username":profile.contact.profile_name,
+                    "profileImage":profile.profileImage.url if profile.profileImage else "no image",
+                    "speciality":profile.contact.speciality if profile.contact.speciality is not None else "notfilled",
+                    "current_job_location":profile.contact.current_job_location
                 })
+                response[artical.id].update({
+                    "bookmark_status":artical.bookmark.filter(id=user.id).exists(),
+                    "bookmark_count":artical.bookmark.all().count(),
+                    "like_status":artical.likes.filter(id=user.id).exists(),
+                    "like_count":artical.likes.all().count(),
+                    "follow":profile.follow.filter(id=user.id).exists()
+                    
+                    })
         return Response(response.values(),status=200)
     
     def post(self,request):
@@ -2364,11 +2348,43 @@ class News_Artical_Post(APIView):
         data = ast.literal_eval(request.data['registerdata'])
         data['artical_image']=request.FILES['artical_image']
         serializer=NewsArticalPostSerializers(data=data)
-        print(data) 
+        
         if serializer.is_valid():
             serializer.save()
             return Response({"message":"news artical posted","status":True},status=200)
         return Response({"message":"errors","status":False},status=400)
+
+###############################
+""" TESTING OF PAGINATION"""
+
+class NewsArticalPostT(APIView):
+    def get(self,request):
+       
+        pagerequest=request.GET.get('page')
+
+        response={}
+        
+           
+        newsartical=NewsArticalPost.objects.select_related('userid').all().order_by('-created_date')
+       
+        serializers=NewsArticalPostSerializers(newsartical,many=True)
+        pageitem=Paginator(serializers.data,5)
+        requestpage=pageitem.page(int(pagerequest))
+        # response={
+        #     "items":pagecount,
+        #     "totalpage":numberofpages,
+        #     "nextpages":requestpage.has_next(),
+        #     "previouspages":requestpage.has_previous(),
+        #     "nextpage":requestpage.next_page_number(),
+        #     "priviouspage":requestpage.previous_page_number() if requestpage.has_previous() else None,
+        #     "startpage":requestpage.start_index(),
+        #     "endpage":requestpage.end_index(),
+        #     "post":requestpage.object_list
+        # }
+        #serializers.data[0].update(response)
+        return Response(requestpage.object_list,status=200)
+
+
 
 """ARTICAL GET AND POST """
 class ArticalPost(APIView):
@@ -2400,7 +2416,8 @@ class ArticalPost(APIView):
                 "profile_name":comment_profile.contact.profile_name,
                 "location":comment_profile.contact.current_job_location,
                 "speciality":comment_profile.contact.speciality,
-                "create_date":artical.created_date
+                "create_date":artical.created_date,
+                "speciality":comment_profile.contact.speciality if comment_profile.contact.speciality is not None else "notfilled"
 
                 }
             serializers=ArticalsSerializers(artical_author,many=False).data
@@ -2517,8 +2534,6 @@ class Artical_Comment(APIView):
         return Response({"message":"artical comment posted","status":True,"artical_comment":artical_comment},status=200)
 
 """ NEW ARTICAL POST ,ARTICAL POST AND COMMENT API END """
-
-
 
 
 """COMPLAINT POST AND COMMENT API START"""
@@ -2650,35 +2665,279 @@ class Complaint_Comment(APIView):
 
 """"THIS IS FOR HOME PAGE API IT HAS COMPLAINT,POLL,ARTICAL THIS IS BASE ON CREATED DATE"""
 """news/poll/complaint/"""
+
+class ComplaintAndPolls(APIView):
+    def get(self,request):
+        return Response({"message":"hello django"})
+        # response={}
+       
+        # pagerequest=request.GET.get('page')
+
+        # username_id=request.GET.get('user_id')
+
+        # polls=Poll.objects.values('created_date')
+        # complaints=Complaint.objects.values('created_date')
+        # NewArtical=Articals.objects.values('created_date')
+        # question=Question.objects.values('created_date')
+        # newsartical=NewsArticalPost.objects.values('created_date')
+       
+        # fivejoin=polls.union(complaints,NewArtical,question,newsartical).order_by('-created_date')
+        # pageitem = Paginator(list(fivejoin), 5) 
+        # requestpage=pageitem.page(int(pagerequest)) 
+       
+        
+        
+        # user=get_object_or_404(User,id=username_id)
+        
+        
+        
+        # for i in range(len(requestpage.object_list)):
+        #     try:
+        #         poll=Poll.objects.get(created_date=requestpage.object_list[i]['created_date'])
+            
+           
+            
+                
+        #         serializer=PollVoteSerializers(poll,many=False).data
+        #         poll_pro=Profile.objects.select_related('contact').get(contact__userdetail__id=poll.poll_user.id)
+                
+        #         poll_profile={  
+        #                         "userid":poll.poll_user.id,
+        #                         "ProfileName":poll_pro.contact.profile_name,
+        #                         "ProfileImage":poll_pro.profileImage.url if poll_pro.profileImage else "no image",
+        #                         "speciality":poll_pro.contact.speciality,
+        #                         "location":poll_pro.contact.current_job_location
+        #                     }
+        #         serializer.update(poll_profile)
+                
+        #         find_existing_voter_or_not=PollVote.objects.select_related('poll','profile').filter(poll_id__id=poll.id,profile__id=user.id)
+                
+
+        #         tvote=poll.pollvote_set.count()
+
+        #         vote=PollVote.objects.aggregate(
+        #                 # TOTAL=Count(filter=Q(poll_id=poll)),
+        #                 A=Count('pk', filter=Q(poll_id=poll,choice="A")),
+        #                 B=Count('pk', filter=Q(poll_id=poll,choice="B")),
+        #                 C=Count('pk', filter=Q(poll_id=poll,choice="C")),
+        #                 D=Count('pk', filter=Q(poll_id=poll,choice="D"))
+
+        #                                 )
+    
+                
+
+        #         if user.id != poll_pro.contact.userdetail.id:
+        #             follow=poll_pro.follow.filter(id=user.id).exists()
+        #         else:
+        #             follow="uploader"
+                
+
+        #         like=poll.likes.filter(id=user.id)
+
+        #         poll_comment=PollComment.objects.filter(poll_id__id=poll.id)
+
+
+        #         bookmark=poll.bookmark.filter(id=user.id)
+        #         serializer["SS_NEET"]= False
+        #         serializer["PG_NEET"]= False 
+        #         serializer["newsartical"]= False 
+               
+        #         serializer.update({
+        #                         "bookmark_status":bookmark.exists(),
+        #                         "bookmark_count":poll.bookmark.all().count(),
+        #                         "like_status":like.exists(),
+        #                         "like_count":poll.likes.all().count(),
+        #                         "follow":str(follow),
+        #                         "complaint_status":False,
+        #                         "art_status":False,
+        #                         "votes":poll.pollvote_set.count(),
+        #                         "likes":poll.likes.all().count(),
+        #                         "user_status":find_existing_voter_or_not.exists(),
+        #                         "vote":tvote,
+        #                         "A": vote["A"] if vote["A"]==0 else int((vote["A"]/tvote)*100 ),
+        #                         "B": vote["B"] if vote["B"]==0 else int((vote["B"]/tvote)*100),
+        #                         "C": vote["C"] if vote["C"]==0 else int((vote["C"]/tvote)*100),
+        #                         "D": vote["D"] if vote["D"]==0 else int((vote["D"]/tvote)*100),
+        #                         "choice":find_existing_voter_or_not[0].choice if find_existing_voter_or_not.exists() else "no_opinion" ,
+        #                         "discussion":poll_comment.count()
+                   
+        #                         })
+                
+        #         response[datetime.now()]=serializer
+        #     except Exception as e:
+        #         pass
+        #     try:
+        #         complaint=Complaint.objects.get(created_date=requestpage.object_list[i]['created_date'])
+           
+            
+        #         serializer1=CaseSerializers(complaint,many=False).data
+        #         complaint_profile=Profile.objects.select_related('contact').get(contact__userdetail__id=complaint.complaint.id)
+        #         case_profile={
+        #                     "userid":complaint.complaint.id,
+        #                     "ProfileName":complaint_profile.contact.profile_name,
+        #                     "ProfileImage":complaint_profile.profileImage.url if complaint_profile.profileImage else "no image",
+        #                     "speciality":complaint_profile.contact.speciality,
+        #                     "location":complaint_profile.contact.current_job_location
+        #                     }
+                
+        #         serializer1.update(case_profile)
+
+        #         discussion=Discussions.objects.select_related('case','profile').filter(case_id__id=complaint.id)
+        #         if user.id != complaint_profile.contact.userdetail.id:
+        #             follow=complaint_profile.follow.filter(id=user.id).exists()
+        #         else:
+        #             follow="uploader"
+               
+        #         like=complaint.likes.filter(id=user.id)
+        #         bookmark=complaint.bookmark.filter(id=user.id)
+        #         serializer1['bookmark_status']=bookmark.exists()
+        #         serializer1['bookmark_count']=complaint.bookmark.count()
+        #         serializer1['like_status']=like.exists()
+        #         serializer1['like_count']=complaint.likes.count()
+        #         serializer1['discussion']=discussion.count()
+        #         serializer1['follow']=str(follow)
+        #         serializer1['poll_status']=bookmark.exists()
+        #         serializer1['art_status']=bookmark.exists()
+        #         serializer1["SS_NEET"]= False
+        #         serializer1["PG_NEET"]= False 
+        #         serializer1["newsartical"]= False 
+                
+
+        #         response[datetime.now()]=serializer1
+        #     except Exception as e:
+        #         pass
+        #     try: 
+        #         artical=Articals.objects.get(created_date=requestpage.object_list[i]['created_date'])
+            
+        #         serializer2=ArticalSerializers(artical,many=False).data
+               
+        #         artical_profile=Profile.objects.get(contact__userdetail__id=artical.user.id)
+        #         case_profile={
+        #                         "userid":artical.user.id,
+        #                         "ProfileName":artical_profile.contact.profile_name,
+        #                         "ProfileImage":artical_profile.profileImage.url if artical_profile.profileImage else "no image",
+        #                         "speciality":artical_profile.contact.speciality,
+        #                         "location":artical_profile.contact.current_job_location
+        #                     }
+        #         serializer2.update(case_profile)
+
+        #         if user.id != artical_profile.contact.userdetail.id:
+        #             follow=artical_profile.follow.filter(id=user.id).exists()
+        #         else:
+        #             follow="uploader"
+
+        #         artical_comment=artical.articalcomment_set.all().count()
+        #         #follow=artical_profile.follow.filter(id=user.id)
+        #         like=artical.likes.filter(id=user.id)
+        #         bookmark=artical.bookmark.filter(id=user.id)
+        #         serializer2["SS_NEET"]= False
+        #         serializer2["PG_NEET"]= False 
+        #         serializer2["complaint_status"]= False
+        #         serializer2["poll_status"]= False 
+        #         serializer2["discussion"]= artical_comment
+        #         serializer2["follow"]= str(follow)
+        #         serializer2["like_count"]= artical.likes.count()
+        #         serializer2["like_status"]= like.exists()
+        #         serializer2["art_status"]=True
+        #         serializer2["bookmark_status"]= bookmark.exists()
+        #         serializer2["bookmark_count"]= artical.bookmark.all().count()
+        #         serializer2["newsartical"]= False
+                
+        #         response[datetime.now()]=serializer2
+        #     except Exception as e:
+        #         pass 
+        #     try:
+        #         question=Question.objects.get(created_date=requestpage.object_list[i]['created_date'])
+           
+        #         serializer=QuestionSerializers(question,many=False).data
+        #         serializer["ProfileImage"]=question.ProfileImage.url if question.ProfileImage  else "no image"
+        #         serializer["complaint_status"]=False 
+        #         serializer["poll_status"]=False 
+        #         serializer["art_status"]=False 
+        #         serializer["SS_NEET"]=True if question.exam=="SS-NEET" else False
+        #         serializer["PG_NEET"]=True if question.exam=="PG-NEET" else False 
+        #         serializer["newsartical"]= False
+        #         try:
+        #             attemptquestion=question.atteptquestion_set.get(user=user,question=question) 
+        #             serializer['selected_option']=attemptquestion.selected_option
+        #             serializer['answer_status']=attemptquestion.answer_status
+        #         except Exception as e:
+        #             serializer['selected_option']=None
+        #             serializer['answer_status']=False
+        #         response[datetime.now()]=serializer
+        #     except Exception as e:
+        #         pass 
+            
+        #     try:
+        #         artical=NewsArticalPost.objects.get(created_date=requestpage.object_list[i]['created_date'])
+           
+            
+        #         serializer=NewsArticalSerializers(artical,many=False).data
+                
+        #         try:
+        #             profile=Profile.objects.select_related('contact').get(contact__userdetail__id=artical.userid.id)
+        #         except Exception as e:
+        #             pass
+        #         else:
+        #             serializer.update({
+        #                 "ProfileName":profile.contact.profile_name,
+        #                 "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
+        #                 "speciality":profile.contact.speciality if profile.contact.speciality is not None else "notfilled",
+        #                 "location":profile.contact.current_job_location
+        #             })
+        #             serializer.update({
+        #                 "bookmark_status":artical.bookmark.filter(id=user.id).exists(),
+        #                 "bookmark_count":artical.bookmark.all().count(),
+        #                 "like_status":artical.likes.filter(id=user.id).exists(),
+        #                 "like_count":artical.likes.all().count(),
+        #                 "follow":profile.follow.filter(id=user.id).exists()
+                        
+        #                 })
+        #             serializer["complaint_status"]=False 
+        #             serializer["poll_status"]=False 
+        #             serializer["art_status"]=False 
+        #             serializer["SS_NEET"]= False
+        #             serializer["PG_NEET"]= False 
+        #             serializer["newsartical"]= True
+        #             response[datetime.now()]=serializer
+        #     except Exception as e:
+        #         pass 
+        # return Response(response.values())
+
+
+
+
+#############################################testing purpose#################################
+
 class ComplaintAndPoll(APIView):
     def get(self,request):
         response={}
+       
+        pagerequest=request.GET.get('page')
 
         username_id=request.GET.get('user_id')
 
         polls=Poll.objects.values('created_date')
-
         complaints=Complaint.objects.values('created_date')
-
         NewArtical=Articals.objects.values('created_date')
-
-        three_table_join=polls.union(complaints,NewArtical).order_by('-created_date')
+        question=Question.objects.values('created_date')
+        newsartical=NewsArticalPost.objects.values('created_date')
+        
+        fivejoin=polls.union(complaints,NewArtical,question,newsartical).order_by('-created_date')
        
+        pageitem = Paginator(list(fivejoin),5) 
+        requestpage=pageitem.page(int(pagerequest)) 
         
         
         user=get_object_or_404(User,id=username_id)
         
         
         
-        for i in range(len(three_table_join)):
-            sortedpolls=Poll.objects.filter(created_date=three_table_join[i]['created_date'])
-            
-           
-            for poll in sortedpolls:
-                
-                
+        for i in range(len(requestpage.object_list)):
 
-                serializer=PollSerializers(poll,many=False).data
+            try:
+                poll=Poll.objects.select_related("poll_user").get(created_date=requestpage.object_list[i]['created_date'])
+                serializer=PollVoteSerializers(poll,many=False).data
                 poll_pro=Profile.objects.select_related('contact').get(contact__userdetail__id=poll.poll_user.id)
                 
                 poll_profile={  
@@ -2690,34 +2949,21 @@ class ComplaintAndPoll(APIView):
                             }
                 serializer.update(poll_profile)
                 
-                find_existing_voter_or_not=PollVote.objects.select_related('poll_id','profile').filter(poll_id__id=poll.id,profile__id=user.id)
+                find_existing_voter_or_not=PollVote.objects.select_related('poll','profile').filter(poll_id__id=poll.id,profile__id=user.id)
                 
 
-                collect_total_vote=poll.pollvote_set.count()
+                tvote=poll.pollvote_set.count()
+
+                vote=PollVote.objects.aggregate(
+                        # TOTAL=Count(filter=Q(poll_id=poll)),
+                        A=Count('pk', filter=Q(poll_id=poll,choice="A")),
+                        B=Count('pk', filter=Q(poll_id=poll,choice="B")),
+                        C=Count('pk', filter=Q(poll_id=poll,choice="C")),
+                        D=Count('pk', filter=Q(poll_id=poll,choice="D"))
+
+                                        )
     
-                choiceA=poll.pollvote_set.filter(choice="A").count()
-                try:    
-                    choiceA_percentage=int((choiceA/collect_total_vote)*100) 
-                except ZeroDivisionError:
-                    choiceA_percentage=choiceA
                 
-                choiceB=poll.pollvote_set.filter(choice="B").count()
-                try:
-                    choiceB_percentage=int((choiceB/collect_total_vote)*100)
-                except ZeroDivisionError:
-                    choiceB_percentage=choiceB 
-
-                choiceC=poll.pollvote_set.filter(choice="C").count()
-                try:
-                    choiceC_percentage=int((choiceC/collect_total_vote)*100) 
-                except ZeroDivisionError:
-                    choiceC_percentage=choiceC
-                
-                choiceD=poll.pollvote_set.filter(choice="D").count()
-                try:
-                    choiceD_percentage=int((choiceD/collect_total_vote)*100) 
-                except ZeroDivisionError:
-                   choiceD_percentage=choiceD
 
                 if user.id != poll_pro.contact.userdetail.id:
                     follow=poll_pro.follow.filter(id=user.id).exists()
@@ -2727,22 +2973,14 @@ class ComplaintAndPoll(APIView):
 
                 like=poll.likes.filter(id=user.id)
 
-                poll_comment=PollComment.objects.select_related('poll_id','profile').filter(poll_id__id=poll.id)
+                poll_comment=PollComment.objects.filter(poll_id__id=poll.id)
 
-                comment={}
-                for pollcom in poll_comment:
-                    profile_detail=Profile.objects.get(contact__userdetail__id=pollcom.profile.id)
-                    comment[pollcom.id]={
-                    "userid":pollcom.profile.id,
-                    "comment_id":pollcom.id,
-                    "comment":pollcom.comment,
-                    "ProfileName":profile_detail.contact.profile_name,
-                    "ProfileImage":profile_detail.profileImage.url if profile_detail.profileImage else "no image"
-
-                    }
-                serializer.update({"comment":comment.values()}) 
 
                 bookmark=poll.bookmark.filter(id=user.id)
+                serializer["SS_NEET"]= False
+                serializer["PG_NEET"]= False 
+                serializer["newsartical"]= False 
+               
                 serializer.update({
                                 "bookmark_status":bookmark.exists(),
                                 "bookmark_count":poll.bookmark.all().count(),
@@ -2754,25 +2992,28 @@ class ComplaintAndPoll(APIView):
                                 "votes":poll.pollvote_set.count(),
                                 "likes":poll.likes.all().count(),
                                 "user_status":find_existing_voter_or_not.exists(),
-                                "A":choiceA_percentage,
-                                "B":choiceB_percentage,
-                                "C":choiceC_percentage,
-                                "D":choiceD_percentage,
+                                "vote":tvote,
+                                "A": vote["A"] if vote["A"]==0 else int((vote["A"]/tvote)*100 ),
+                                "B": vote["B"] if vote["B"]==0 else int((vote["B"]/tvote)*100),
+                                "C": vote["C"] if vote["C"]==0 else int((vote["C"]/tvote)*100),
+                                "D": vote["D"] if vote["D"]==0 else int((vote["D"]/tvote)*100),
                                 "choice":find_existing_voter_or_not[0].choice if find_existing_voter_or_not.exists() else "no_opinion" ,
                                 "discussion":poll_comment.count()
                    
                                 })
                 
-                response[random.randint(1,9999)]=serializer
+                response[datetime.now()]=serializer
+            except Exception as e:
+                pass
+            
+                
 
-
-            complaints=Complaint.objects.filter(created_date=three_table_join[i]['created_date'])
-           
-            for complaint in complaints:
-                serializer1=ComplaintSerializers(complaint,many=False).data
-                complaint_profile=Profile.objects.select_related('contact').get(contact__userdetail__id=complaint.complaint_id.id)
+            try:
+                complaint=Complaint.objects.select_related("complaint"). get(created_date=requestpage.object_list[i]['created_date'])
+                serializer1=CaseSerializers(complaint,many=False).data
+                complaint_profile=Profile.objects.select_related('contact').get(contact__userdetail__id=complaint.complaint.id)
                 case_profile={
-                            "userid":complaint.complaint_id.id,
+                            "userid":complaint.complaint.id,
                             "ProfileName":complaint_profile.contact.profile_name,
                             "ProfileImage":complaint_profile.profileImage.url if complaint_profile.profileImage else "no image",
                             "speciality":complaint_profile.contact.speciality,
@@ -2781,45 +3022,38 @@ class ComplaintAndPoll(APIView):
                 
                 serializer1.update(case_profile)
 
-                discussion=Discussions.objects.select_related('case_id','profile').filter(case_id__id=complaint.id)
-
-                comment={}
-                for dis in discussion:
-                    profile_detail=Profile.objects.get(contact__userdetail__id=dis.profile.id)
-                    comment[dis.id]={
-                    "userid":dis.profile.id,
-                    "comment_id":dis.id,
-                    "comment":dis.comment,
-                    "ProfileName":profile_detail.contact.profile_name,
-                    "ProfileImage":profile_detail.profileImage.url if profile_detail.profileImage else "no image"
-
-                    }
-                serializer1.update({"comment":comment.values()}) 
+                discussion=Discussions.objects.select_related('case','profile').filter(case_id__id=complaint.id)
                 if user.id != complaint_profile.contact.userdetail.id:
                     follow=complaint_profile.follow.filter(id=user.id).exists()
                 else:
                     follow="uploader"
-                #follow=complaint_profile.follow.filter(id=user.id)
+               
                 like=complaint.likes.filter(id=user.id)
                 bookmark=complaint.bookmark.filter(id=user.id)
-                serializer1.update({
-                                "bookmark_status":bookmark.exists(),
-                                "bookmark_count":complaint.bookmark.all().count(),
-                                "like_status":like.exists(),
-                                "like_count":complaint.likes.all().count(),
-                                "follow":str(follow),
-                                "poll_status":False,
-                                "art_status":False ,
-                                "discussion":discussion.count()
-                   
-                                })
-                response[random.randint(1,9999)]=serializer1
+                serializer1['bookmark_status']=bookmark.exists()
+                serializer1['bookmark_count']=complaint.bookmark.count()
+                serializer1['like_status']=like.exists()
+                serializer1['like_count']=complaint.likes.count()
+                serializer1['discussion']=discussion.count()
+                serializer1['follow']=str(follow)
+                serializer1['poll_status']=bookmark.exists()
+                serializer1['art_status']=bookmark.exists()
+                serializer1["SS_NEET"]= False
+                serializer1["PG_NEET"]= False 
+                serializer1["newsartical"]= False 
+                
 
-            NewArtical=Articals.objects.filter(created_date=three_table_join[i]['created_date'])
-            for artical in NewArtical:
-                serializer2=ArticalsSerializers(artical,many=False).data
+                response[datetime.now()]=serializer1
+            except Exception as e:
+                pass
+           
+            
+                
+            try:
+                artical=Articals.objects.select_related("user"). get(created_date=requestpage.object_list[i]['created_date'])
+                serializer2=ArticalSerializers(artical,many=False).data
                
-                artical_profile=Profile.objects.get(contact__userdetail__id=artical.user.id)
+                artical_profile=Profile.objects.select_related("contact").get(contact__userdetail__id=artical.user.id)
                 case_profile={
                                 "userid":artical.user.id,
                                 "ProfileName":artical_profile.contact.profile_name,
@@ -2828,21 +3062,6 @@ class ComplaintAndPoll(APIView):
                                 "location":artical_profile.contact.current_job_location
                             }
                 serializer2.update(case_profile)
-
-                artical_comment=ArticalComment.objects.select_related('artical_id','profile').filter(artical_id__id=artical.id)
-                art_comment={}
-                for art in artical_comment:
-                    profile_detail=Profile.objects.get(contact__userdetail__id=art.profile.id)
-                    art_comment[art.id]={
-                    "userid":art.profile.id,
-                    "comment_id":art.id,
-                    "comment":art.comment,
-                    "ProfileName":profile_detail.contact.profile_name,
-                    "ProfileImage":profile_detail.profileImage.url if profile_detail.profileImage else "no image",
-                    "speciality":profile_detail.contact.speciality
-
-                    }
-                serializer2.update({"comment":art_comment.values()}) 
 
                 if user.id != artical_profile.contact.userdetail.id:
                     follow=artical_profile.follow.filter(id=user.id).exists()
@@ -2853,367 +3072,101 @@ class ComplaintAndPoll(APIView):
                 #follow=artical_profile.follow.filter(id=user.id)
                 like=artical.likes.filter(id=user.id)
                 bookmark=artical.bookmark.filter(id=user.id)
-                serializer2.update({
-                                "bookmark_status":bookmark.exists(),
-                                "bookmark_count":artical.bookmark.all().count(),
-                                "like_status":like.exists(),
-                                "like_count":artical.likes.all().count(),
-                                "follow":str(follow),
-                                "poll_status":False,
-                                "complaint_status":False,
-                                "artical_comment":artical_comment
-                   
-                                })
-                response[random.randint(1,9999)]=serializer2
-
+                serializer2["SS_NEET"]= False
+                serializer2["PG_NEET"]= False 
+                serializer2["complaint_status"]= False
+                serializer2["poll_status"]= False 
+                serializer2["discussion"]= artical_comment
+                serializer2["follow"]= str(follow)
+                serializer2["like_count"]= artical.likes.count()
+                serializer2["like_status"]= like.exists()
+                serializer2["art_status"]=True
+                serializer2["bookmark_status"]= bookmark.exists()
+                serializer2["bookmark_count"]= artical.bookmark.all().count()
+                serializer2["newsartical"]= False
+                
+                response[datetime.now()]=serializer2
+            except Exception as e:
+                pass
+           
+                
+            try:
+                question=Question.objects.filter(created_date=requestpage.object_list[i]['created_date'])
+                serializer=QuestionSerializers(question,many=False).data
+                serializer["ProfileImage"]=question.ProfileImage.url if question.ProfileImage  else "no image"
+                serializer["complaint_status"]=False 
+                serializer["poll_status"]=False 
+                serializer["art_status"]=False 
+                serializer["SS_NEET"]=True if question.exam=="SS-NEET" else False
+                serializer["PG_NEET"]=True if question.exam=="PG-NEET" else False 
+                serializer["newsartical"]= False
+                try:
+                    attemptquestion=question.atteptquestion_set.get(user=user,question=question) 
+                    serializer['selected_option']=attemptquestion.selected_option
+                    serializer['answer_status']=attemptquestion.answer_status
+                except Exception as e:
+                    serializer['selected_option']=None
+                    serializer['answer_status']=False
+                response[datetime.now()]=serializer
+            except Exception as e:
+                pass
             
-
+                
+            
+            try:
+                artical=NewsArticalPost.objects.select_related("userid").get(created_date=requestpage.object_list[i]['created_date'])
+                serializer=NewsArticalSerializers(artical,many=False).data
+                
+                
+                
+                profile=Profile.objects.select_related('contact').get(contact__userdetail__id=artical.userid.id)
+                
+                
+                serializer["ProfileName"]=profile.contact.profile_name
+                serializer["ProfileImage"]=profile.profileImage.url if profile.profileImage else "no image"
+                serializer["speciality"]=profile.contact.speciality if profile.contact.speciality is not None else "notfilled"
+                serializer["location"]=profile.contact.current_job_location
+                serializer["bookmark_status"]=artical.bookmark.filter(id=user.id).exists()
+                serializer["bookmark_count"]=artical.bookmark.all().count()
+                serializer["like_status"]=artical.likes.filter(id=user.id).exists()
+                serializer["like_count"]=artical.likes.all().count()
+                serializer["follow"]=profile.follow.filter(id=user.id).exists()
+                   
+               
+                serializer["complaint_status"]=False 
+                serializer["poll_status"]=False 
+                serializer["art_status"]=False 
+                serializer["SS_NEET"]= False
+                serializer["PG_NEET"]= False 
+                serializer["newsartical"]= True
+                response[datetime.now()]=serializer
+            except Exception as e:
+                pass
+           
+            
+                
+       
         
+       
         return Response(response.values())
 
 
 
             
-           
-
-class JobRequestPost(APIView):
-    def get(self,request):
         
-        location=[ loc.hospital_city_name for loc in City.objects.all()]
-        response={
-                "hospital_type":[type.hospitaltype for type in Hospital_Type.objects.exclude(position="Others")],
-                "position":[pos.position  for pos in Designation.objects.all()],
-                "department":[dep.department_name for dep in Hospital_Department.objects.all()],
-                "salary":[s for s in range(30000,70000,5000)],
-                "location":location,
-                "vacancy":[i for i in range(1,10)],
-                "job_type":['Full_Time','Part_Time']
-
-            }
-        
-        return Response(response,status=200)
-
-    def post(self,request):
-        if not request.POST._mutable:
-            request.POST._mutable = True
-        data=request.data 
-        print(data)
-        serializer=RequestJobPostSerializers(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message":"job posted"})
-        return Response(serializers.errors,status=404)
 
 
 
-"""CUSTOM JOBS GET HERE"""
-class User_Customize_Jobs(APIView):
-    def get(self,request):
-        related_job=request.GET.get('userid')
-        username_id=request.GET.get('user_id')
  
-        if related_job or username_id:
-            resp={}
-
-            if username_id:
-                query_set=Q(id=username_id)
-                job_query_set=Q(user_id__id=username_id)
-            
-            elif related_job:
-                query_set=Q(id=related_job)
-                job_query_set=Q(user_id__id=related_job)
-            
-            try:
-                user=User.objects.get(query_set)
-                
-            except Exception as e:
-               
-                return Response(resp.values(),status=200)
-
-            try:
-                
-                job=Custome_Job.objects.get(job_query_set)
-                category_job=Category_Related_Job.objects.filter(
-                                    Q(
-                                        department__iexact=job.department,designation__iexact=job.job_position,
-                                        hospital_type__iexact=job.type_of_hospital,job_type__iexact =job.jobType,
-                                        salary=job.minimum_salary,location__iexact=job.location,
-                                        accommodation__iexact=job.allowance,experince__iexact=job.work_expericence,
-                                    )
-                        
-                            )
-                job_status=True
-            except Exception as e:
-                job_status=False
-                pass
-               
-            if username_id:
-               
-
-                resp={
-                    "total_custome_job":category_job.count() if job_status else 0,
-                    "save_jobs":Category_Related_Job.objects.filter(bookmark=user).count(),
-                    "apply_job":Category_Related_Job.objects.filter(applicant=user).count(),
-                    "interview_call":Category_Related_Job.objects.filter(job_status=True).count(),
-                
-                }
-                return Response(resp,status=200)
-            
-            elif related_job:
-                if job_status:
-                    for category in category_job:
-                        serilaizer=Category_Related_JobSerializers(category,many=False)
-                        resp[category.id]=serilaizer.data
-                        resp[category.id].update({
-                            "bookmark_status":category.bookmark.filter(id=user.id).exists(),
-                            "like_status":category.likes.filter(id=user.id).exists(), 
-                            "apply_status":category.applicant.filter(id=user.id).exists(),
-                                                })
-                        
-                    return Response(resp.values(),status=200)
-                else:
-                    return Response(resp.values(),status=200)
-
-        else:
-            response={
-                "department":[dep.department_name for dep in Hospital_Department.objects.all()],
-                "postion_of_job":[pos.position for pos in Designation.objects.all()], 
-                "type_of_hospital":[type.hospitaltype for type in Hospital_Type.objects.all()], 
-                "city_of_hospital":[cat['location']  for cat in Category_Related_Job.objects.values('location').distinct()],
-                "minimum_salary":[salary.min_salary for salary in Salary.objects.all()] ,   
-                "work_experince":[experince for experince in range(1,10)], 
-                "job_type":["Part_Time","Full_Time"], 
-                "accommodation":["Yes","No"]
-            }
-            
-            return Response(response,status=200)
-    
-    def post(self,request):
-        data=request.data 
-        try:
-            custom_job=get_object_or_404(Custome_Job,user_id__id=data['user_id'])
-            serializer=Custome_JobSerializers(custom_job,data=request.data,partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data,status=200)
-            return Response(serializer.errors,status=400)
-            
-        except Exception as e:
-            get_object_or_404(User,id=data['user_id'])
-            serializer=Custome_JobSerializers(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data,status=200)
-            return Response(serializer.errors,status=400)
-    
-
-
-#MultiImage 
-class Multi_Image_Post(APIView):
-    def post(self,request):
-        if not request.POST._mutable:
-            request.POST._mutable = True
-        
-        complaintId=request.GET.get('complaint_id')
-        pollId=request.GET.get('poll_id')
-        multiple_image=request.FILES.getlist('multi_image')
-        data = ast.literal_eval(request.data.get('registerdata'))
-        if complaintId:
-            complaint=get_object_or_404(Complaint,id=complaintId)
-            for img in multiple_image:
-            
-                MultiImage.objects.create(complaint=complaint,image=img,complaint_status=True)
-
-            return Response({"message":"multiple_image post for news articals","status":True},status=200)
-        elif pollId:
-            poll=get_object_or_404(Poll,id=pollId)
-            for img in multiple_image:
-            
-                MultiImage.objects.create(news_poll=poll,image=img,newspoll_status=True)
-
-            return Response({"message":"multiple_image post for news articals","status":True},status=200)
-        return Response({"message":"key error","status":False},status=400)
-
-
-class Job_Banner(APIView):
-    def get(self,request):
-
-        bannerid=request.GET.get('bannerid')
-        banner=Banner.objects.all()
-        if bannerid:
-            return Response(BannerSerializers(banner.get(id=bannerid),many=False).data,status=status.HTTP_200_OK)
-
-        return Response(BannerSerializers(banner,many=True).data,status=status.HTTP_200_OK)
-
-
-class Promotional_Banner(APIView):
-    def get(self,request):
-
-        bannerid=request.GET.get('bannerid')
-        banner=HomeBanner.objects.all()
-        if bannerid:
-            return Response(HomeBannerSerializers(banner.get(id=bannerid),many=False).data,status=status.HTTP_200_OK)
-
-        return Response(HomeBannerSerializers(banner,many=True).data,status=status.HTTP_200_OK)
 
 
 
-"""THIS IS FOR UPLOAD STATUS,USER MULTIPLE PHOTO AND VIDEOS"""
-class Upload_status(APIView):
-    def post(self,request):
-        if not request.POST._mutable:
-            request.POST._mutable = True
-        
-        profileid=request.GET.get('user_id')
-        multiple_image=request.FILES.getlist('multi_image')
-        
-        if profileid:
-            user=get_object_or_404(User,id=profileid)
-            profile=get_object_or_404(Profile,contact__userdetail__id=user.id)
-           
-            for img in multiple_image:
-                
-            
-                MultiImageStatus.objects.create(profile=profile,image=img)
 
-            return Response({"message":"successfully uploaded image","status":True},status=200)
-        
-        else:
-            return Response({"message":"key error","status":False},status=400) 
 
-    def get(self,request):
-        response={}
-        profileid=request.GET.get('user_id')
-        show_all_status=request.GET.get('userid')
-        what_my_status=request.GET.get('my_status')
-        
-        
-        try:
-            user=User.objects.get(Q(id=profileid) | Q(id=show_all_status) | Q(id=what_my_status))
-        except ObjectDoesNotExist:
-            return Response({"message":"user id not exits"},status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            profile=Profile.objects.get(contact__userdetail__id=user.id)
-        except ObjectDoesNotExist:
-            return Response({"message":"profile id not exits"},status=status.HTTP_400_BAD_REQUEST)
-
-        if profileid:
-            
-            multiple_image=profile.multiimagestatus_set.all() 
-            for img in multiple_image:
-                response[img.id]={
-                "id":img.id,
-                "image":img.image.url if  img.image else "no status"
-                }
-            return Response(response.values())
-        
-        elif what_my_status:
-            multiple_image=profile.multiimagestatus_set.all() 
-            return Response({"story_status":multiple_image.exists(),
-                            "id":user.id,
-                            "image":profile.profileImage.url if profile.profileImage else "no image"
-                            })
-
-        elif show_all_status:
-            multiple_image=MultiImageStatus.objects.select_related('profile').filter(~Q(profile__id=profile.id)).order_by('-created')
-            for i in multiple_image:
-                calculated_time=datetime.now() - i.created
-                tatal_sec_in_one_day=(24*60*60)
-                if tatal_sec_in_one_day >= calculated_time.total_seconds():
-                    
-                    response[i.profile.id]={
-                        "id":i.profile.contact.userdetail.id,
-                        "name":i.profile.profile_name,
-                        "image":i.profile.profileImage.url if i.profile.profileImage else "no image"    
-                    }
-                else:
-                    i.delete()
-                    pass
-                
-          
-            return Response(response.values())
 
 """ ########################JOB SEARCH API START ##########################"""
 
-"""SPECILITIES SEARCH"""
 
-
-
-
-
-class Hospital_Type_Lists(APIView):
-    def get(self,request):
-        HT= Hospital_Type.objects.exclude(position="Others")
-        serializers=HospitalTypeSerializer(HT,many=True)
-        return Response(serializers.data)
-
-
-
-class SearchResult(APIView):
-    def get(self,request,*args,**kwargs):
-        resp={}
-        get_value=request.query_params
-        category=get_object_or_404(Job_By_Category,id=get_value['category_id'])
-       
-        user_filter_query=[Q(category=category.id)]
-        user=get_object_or_404(User,id=request.query_params['user_id'])
-        print(get_value)
-        
-        for data in get_value:
-            if "location" == data:
-                query=Q(location__in=get_value['location'].split(","))
-                user_filter_query.append(query)
-                print(query)
-                print(user_filter_query)
-                
-
-               
-            
-            elif "specialist" == data:
-                query=Q(course__in=get_value['specialist'].split(","))
-                user_filter_query.append(query)
-                print(query)
-                print(user_filter_query)
-               
-            elif "super_specialist" == data:
-                query=Q(course__in=get_value['super_specialist'].split(","))
-                user_filter_query.append(query)
-                print(query)
-                print(user_filter_query)
-                
-                
-            elif "position" == data:
-                query=Q(designation__in=get_value['position'].split(","))
-                user_filter_query.append(query)
-                print(query)
-                print(user_filter_query)
-               
-            elif "graduation" == data:
-                query=Q(qualification__in=get_value['graduation'].split(","))
-                user_filter_query.append(query)
-                print(query)
-                print(user_filter_query)
-                
-               
-            
-        new_job=Category_Related_Job.objects.select_related('category').filter(reduce(operator.and_, user_filter_query)).order_by('-created_date')
-        print(new_job) 
-        for categorys in new_job:
-            print(categorys)
-            
-            
-            serializer=Category_Related_JobSerializers(categorys,many=False).data
-            resp[categorys.id]=serializer
-            
-            resp[categorys.id].update({
-                    
-                        "bookmark_status":categorys.bookmark.filter(id=user.id).exists(),
-                        "like_status":categorys.likes.filter(id=user.id).exists(), 
-                        "apply_status":categorys.applicant.filter(id=user.id).exists(),
-                                    })
-            
-        return Response(resp.values(),status=200)
        
 
 '''api/job/loction/'''
@@ -3305,32 +3258,27 @@ class Department_By_Job(APIView):
         
 
         else:
-            departments=Hospital_Department.objects.all()
             
-            for department in departments:
-            
-              
-                response[department.id]={
-                    "id":department.id,
-                    "department":department.department_name
-                    
+            deparments.sort()
+            for i in range(len(deparments)):
+                
+                response[i]={
+                    "id":i+1,
+                    "department":deparments[i],
+                
                 }
             return Response(response.values(),status=200)
 
 
 """JOB SEARCH BY LOCATION DEPARTMENT DESIGNATION"""
 
-class Search_Location_Department_Designation(APIView):
+class SearchLocationDepartment(APIView):
     def get(self,request,format=None):
         resp={}
-        multi_location_input=request.GET.get('location').split(",")
+        multilocation=request.GET.get('location').split(",") 
        
-        
-        
-        multi_department_input=request.GET.get('department').split(",") 
+        multidepartment=request.GET.get('department').split(",") 
        
-        multi_designation_input=request.GET.get('designation').split(",") 
-        
         
 
         username_id=request.GET.get('user_id')
@@ -3339,128 +3287,159 @@ class Search_Location_Department_Designation(APIView):
         
         """USER QUERY """
         
-     
-        if (len(multi_location_input[0])>=2) and (len(multi_department_input[0])>=2) and (len(multi_designation_input[0])>=2):
+       
+        if ("" not in multilocation) and ("" not in multidepartment):
             user_query=Q(
                             Q(
-                                location__in=multi_location_input,
-                                Speciality__in=multi_department_input,
-                                designation__in=multi_designation_input
+                                job_status=True,
+                                location__in=multilocation,
+                                Speciality__in=multidepartment
+                                
+                            ) 
                         )
-
-            )
-            print("3",user_query)
-        elif (len(multi_location_input[0])>=2) and (len(multi_department_input[0])>=2) :
-            user_query=Q(
-                            Q(
-                                location__in=multi_location_input,
-                                Speciality__in=multi_department_input,
-                           
-                            )
-
-                    )
-            print("2",user_query)
-        elif (len(multi_location_input[0])>=2) and (len(multi_designation_input[0])>=2) :
-            user_query=Q(
-                            Q(
-                                location__in=multi_location_input,
-                                designation__in=multi_designation_input,
-                            
-                            )
-
-                    )
-            print("2",user_query)
-        elif (len(multi_department_input[0])>=2) and (len(multi_designation_input[0])>=2) :
-            user_query=Q(
-                            Q(
-                                Speciality__in=multi_department_input,
-                                designation__in=multi_designation_input,
-                            
-                            )
-
-                    )
-            print("2",user_query)
-        elif multi_location_input or multi_department_input or multi_designation_input:
-            user_query=Q(
-                           
-                                Q(location__in=multi_location_input)
-                                |
-                                Q(Speciality__in=multi_department_input)
-                                |
-                                Q(designation__in=multi_designation_input)
-                       
-
-                        )
-            print("1",user_query)
-        data={  
-                "id":username_id,
-                "location": ",".join(multi_location_input),
-                "department":",".join(multi_department_input),
-                "disignation":",".join(multi_designation_input),
-            }
             
-        RecentSearch.objects.update_or_create(user=user,search=data)    
+        elif "" not in multilocation:
+            user_query=Q(job_status=True,location__in=multilocation)                    
+                  
+        elif "" not in multidepartment:
+            user_query=Q(Speciality__in=multidepartment,job_status=True) 
+            
+        else:
+            return Response(resp.values(),status=200)
+         
+       
         """GETING JOBS HERE BASED ON USER QUERY"""
-        number_of_jobs_search_releate=Category_Related_Job.objects.filter(user_query,job_status=True).order_by('-created_date')
-        print(number_of_jobs_search_releate)
+        jobs=Category_Related_Job.objects.filter(user_query).order_by('-created_date')
+       
         """GETING SINGLE JOB AND BINDING BOOKMARK,LIKE,APPLY"""           
-        for jobs in number_of_jobs_search_releate:
+        for job in jobs:
 
-
-            status_data={
-                        "bookmark_status":jobs.bookmark.filter(id=user.id).exists(),
-                        "like_status":jobs.likes.filter(id=user.id).exists(), 
-                        "apply_status":jobs.applicant.filter(id=user.id).exists(),
-                        }
-            
-            serializer=Category_Related_JobSerializers(jobs,many=False).data
-            serializer.update(status_data)
-            resp[jobs.id]=serializer  
+            serializer=Category_Related_JobSerializers(job,many=False).data
+            serializer['eligibility']=[ {"name":i} for i in job.qualification.split(",")]
+            serializer["bookmark_status"]=job.bookmark.filter(id=user.id).exists()
+            serializer["like_status"]=job.likes.filter(id=user.id).exists()
+            serializer["apply_status"]=job.applicant.filter(id=user.id).exists()
+            resp[job.id]=serializer  
         return Response(resp.values(),status=200)
         
 
-class Recent_Search(APIView):
-    def get(self,request,format=None):
-        
-        user=get_object_or_404(User,id=request.GET.get('user_id'))  
-        result=RecentSearch.objects.filter(user=user).order_by("-created")[:10]
-        serializer=RecentSearchSerializer(result,many=True) 
-        return Response(serializer.data,status=200)
-            
-
-
-class All_Jobs(APIView):
-    def get(self,request):
-        category=request.GET.get('catid')
-        resp={}
-        if category:
-            new_job=Category_Related_Job.objects.filter(category__id=category).order_by('-created_date')
-            print("particular category by jobs")
-        else:
-            new_job=Category_Related_Job.objects.all().order_by('-created_date')
-            print("all category jobs")
-
-        print(new_job) 
-        user=get_object_or_404(User,id=request.query_params['user_id'])
-        for categorys in new_job:
-            print(categorys)
-            
-            
-            serializer=Category_Related_JobSerializers(categorys,many=False).data
-            resp[categorys.id]=serializer
-            
-            resp[categorys.id].update({
-                        "category_id":categorys.category.id,
-                        "category_name":categorys.category.title,
-                        "bookmark_status":categorys.bookmark.filter(id=user.id).exists(),
-                        "like_status":categorys.likes.filter(id=user.id).exists(), 
-                        "apply_status":categorys.applicant.filter(id=user.id).exists(),
-                                    })
-            
-        return Response(resp,status=200)
-        #return Response(resp.values(),status=200)
-
-
 """END JOB SEARCH API"""
+
+###################START QUESTION AND ANSWER PART#############################
+class GetQuestion(APIView):
+    def get(self,request):
+        question=request.GET.get('id')
+        examination=request.GET.get('exam')
+        userid=request.GET.get('user_id')
+
+        response={}
+        try:
+            user=User.objects.get(id=userid)
+        except Exception as e:
+            return Response({"message":"user id not found","status":False},status=status.HTTP_400_BAD_REQUEST)
+        
+        if question is not None:
+            
+            serializer=QuestionSerializers(Question.objects.get(id=question),many=False)
+            serializer["ProfileImage"]=question.ProfileImage.url if question.ProfileImage  else "no image"
+            serializer["poll_status"]=False
+            serializer["art_status"]=False
+            serializer['PG_NEET']=True if question.exam=="PG-NEET" else False
+            serializer['SS_NEET']=True if question.exam=="SS-NEET" else False
+            serializer["complaint_status"]=False
+            serializer["newsartical"]=False
+            try:
+                attemptquestion=question.atteptquestion_set.get(user=user,question=question) 
+                serializer['selected_option']=attemptquestion.selected_option
+                serializer['answer_status']=attemptquestion.answer_status
+            except Exception as e:
+                serializer['selected_option']=None
+                serializer['answer_status']=False
+            return Response(serializer.data)
+        
+        elif examination is not None:
+            questions=Question.objects.filter(exam__iexact=examination).order_by('-created_date')
+            for question in questions:
+                serializer=QuestionSerializers(question,many=False).data
+                serializer["ProfileImage"]=question.ProfileImage.url if question.ProfileImage  else "no image"
+                serializer["poll_status"]=False
+                serializer["art_status"]=False
+                serializer['PG_NEET']=True if question.exam=="PG-NEET" else False
+                serializer['SS_NEET']=True if question.exam=="SS-NEET" else False
+                serializer["complaint_status"]=False 
+                serializer["newsartical"]=False 
+                try:
+                    attemptquestion=question.atteptquestion_set.get(user=user,question=question) 
+                    serializer['selected_option']=attemptquestion.selected_option
+                    serializer['answer_status']=attemptquestion.answer_status
+                except Exception as e:
+                    serializer['selected_option']=None
+                    serializer['answer_status']=False
+                response[question.id]=serializer
+            return Response(response.values())
+
+        
+        
+        # else:
+        #     serializer=QuestionSerializers(Question.objects.all().order_by("-created_date"),many=True)
+        #     return Response(serializer.data)
+
+
+
+class AttemptQuestions(APIView):
+    def get(self,request):
+        userid=request.GET.get('user_id')
+        response={}
+        try:
+            user=User.objects.get(id=userid)
+        except Exception as e:
+            return Response ({"message":"user id not found","staus":False,"error":str(e)},status=status.HTTP_400_BAD_REQUEST)
+
+        attempt_question=user.atteptquestion_set.all()
+        for i in attempt_question:
+            serializers=AtteptQuestionSerializers(i,many=False).data
+            serializers['question']=i.question.question
+            response[i.id]=serializers
+        return Response(response.values(),status=status.HTTP_200_OK)
+    
+    def post(self,request):
+        if not request.POST._mutable:
+            request.POST._mutable = True
+        data=request.data
+        
+        serializers=AtteptQuestionSerializers(data=data)
+        user=get_object_or_404(User,id=data['user'])
+        data['user']=user.id
+        question=get_object_or_404(Question,id=data['question'])
+
+        if AtteptQuestion.objects.filter(user=user,question=question).exists():
+            return Response({"message":"you already attempted this question","status":True})
+        
+        data['question']=question.id
+        optionlist=["A","B","C",'D']
+        if data['selected_option'] not in optionlist:
+            return Response({"message":"this is not valid option","status":False},status=status.HTTP_400_BAD_REQUEST)
+        
+        elif data['selected_option']==question.correct_answer:
+            data['answer_status']=True
+        
+        
+        if serializers.is_valid():
+            serializers.save()
+            serializer=serializers.data
+            serializer['correct_answer']=question.correct_answer
+            return Response(serializer)
+        else:
+            return Response(serializers.errors,status=status.HTTP_400_BAD_REQUEST)
+
+class HospitlMultiimage(APIView):
+    
+    def get(self,request):
+        jobid=request.GET.get('jobid')
+        hospitalimage=HospitlMultiimage.objects.filter(job__id=jobid)
+        pass 
+    
+
+
 
 

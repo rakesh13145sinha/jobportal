@@ -10,12 +10,19 @@ urlpatterns=[
                 path('follow/',TryToFollowUnfollow.as_view()),
                 path('following/',FollowingProfile.as_view()),
                 path('upload/file/',UserResumeUpload.as_view(),name="resume upload"),
-                path('registration',UserRegistration.as_view())
+                path('registration',UserRegistration.as_view()),
+                path('match',MatchPeople.as_view()),
                 
                 ])),
     
-    path('new/job/',New_Job_Post.as_view()),
-    path('subject/',Subjects.as_view()),
+    path('new/job/',include([
+        path("",JobPost.as_view()),
+        path("random",RandomJobs.as_view())
+    
+    
+    
+        ]) ),
+  
     path('user/',include([
               
                 path('personal/info',UpdatePersonalInfo.as_view()),
@@ -30,9 +37,6 @@ urlpatterns=[
                 path('profession/hospital/type', Hospital_Type_Lists.as_view()),
                 path('profession/language', Languages.as_view()),
                 path('profession/gender', Gender.as_view()),
-                
-                
-
                 path('case',User_Posted_Case.as_view()),
                 path('case/bookmarks',User_Bookmark_Case.as_view()),
                 path('case/likes',User_Like_Case.as_view()),
@@ -46,8 +50,12 @@ urlpatterns=[
                 path('college/story/likes',User_College_Story_LIke.as_view()),
                 path('college/story/bookmarks',User_College_Stroy_Bookmarks.as_view()),
                 path('poll',User_Poll_Posted.as_view()),
+                
                 path('poll/likes',User_Poll_LIke.as_view()),
-                path('poll/bookmarks',User_Poll_Bookmarks.as_view())
+                path('poll/bookmarks',User_Poll_Bookmarks.as_view()),
+                path('question',GetQuestion.as_view()),
+                path('question/attempt',AttemptQuestions.as_view()),
+
                
 
                     ])),
@@ -70,27 +78,22 @@ urlpatterns=[
                         path('department/',Department_By_Job.as_view(),name="department and speciality both same"),
                         path('location/',Location_By_job_search.as_view(),name="show_job_count_related_to_location"),
                         path('designations/',All_Designations.as_view()),
-                        
                         path('search/higher/qualifiction',DoctorHigherQualification.as_view()),
                         path('search/state',State_Location.as_view()),
                         path('search/state/location',City_Location.as_view()),
-                      
-                        path('search/result',SearchResult.as_view()),
-                       
+                        path('search/category/<str:category>',CategoriesData.as_view()),
                         path('profile/',User_Profile.as_view()),
-                        path('category/',New_Job_Category_Post.as_view()),
-                        path('news/category/',News_Category.as_view(),name="news_category"),
-                        path('news/category/artical/',Related_TO_News_Category.as_view()),
-                        path('post/',JobRequestPost.as_view(),name="request_for_job_post"),
-                        path('top/',TopJob.as_view(),name="top_jobs"),
-                        path('search/',Search_Location_Department_Designation.as_view()),
-                        #test part for search data store in file
-                        path('search/recent',Recent_Search.as_view()),
-                        path('all',All_Jobs.as_view())
+                        path('category/',Category.as_view()),
+                        path('category/name',CategoriesData.as_view()),
+                        path('category/designation/<str:category>',CategoryDesignation.as_view()),
+                        path('search/',SearchLocationDepartment.as_view()),
+                        
+                        
                         ])),
     
     path('news/',include([
                     path('artical/post/',News_Artical_Post.as_view(),name="news_articalpost"),
+                    path('test/artical/post',NewsArticalPostT.as_view() ),
                     path('artical/post',NewsArticalPost_Ios.as_view()),#IOS 
                     path('poll/post/',News_Poll.as_view(),name="poll"),
                     path('poll/vote/',VoteForPoll.as_view(),name="caste vote"),
@@ -98,8 +101,10 @@ urlpatterns=[
                     path('college/story/',College_Storires.as_view(),name="new_college_story"),
                     path('artical/',ArticalPost.as_view(),name="artical_post"),
                     path('artical/comment/',Artical_Comment.as_view(),name='artical_comment'),
-                    path('multi_image/post/',Multi_Image_Post.as_view(),name="multiple_image"),
+                    
                     path('poll/complaint/',ComplaintAndPoll.as_view(),name="get_poll_complaint"),
+                    path('poll/complaint/test',ComplaintAndPolls.as_view(),name="get_poll_complaint"),
+                   
                   
                    
                    
@@ -111,18 +116,8 @@ urlpatterns=[
                
 
         ])),
-    path('custom/',include([
-                    path('user/',User_Customize_Jobs.as_view(),name='custome_jobs')
-                        ])),
-    path('banner/',include([path('job/',Job_Banner.as_view()),
-                            path('promotional/',Promotional_Banner.as_view()),
-
-                        ])),
-    path('upload/',include([
-
-                path('status/',Upload_status.as_view()),
-               
-                ])),
+    
+    
     
     
 ]
