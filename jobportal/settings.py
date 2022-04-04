@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from django.core.management.utils import get_random_secret_key
 import dj_database_url
+import django_heroku
 BASE_DIR = Path(__file__).resolve().parent.parent
 #TEMPLATE_DIR=os.path.join(BASE_DIR,'forntend/template')
 
@@ -117,7 +118,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    # 'job.authentication.AuthBackend',
+   
 )
 
 
