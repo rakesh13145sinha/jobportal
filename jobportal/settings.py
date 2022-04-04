@@ -8,7 +8,7 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 #TEMPLATE_DIR=os.path.join(BASE_DIR,'forntend/template')
 
-SECRET_KEY =str(os.getenv('SECRET_KEY')) #get_random_secret_key()#str(os.getenv('SECRET_KEY'))
+SECRET_KEY =str(os.getenv('SECRET_KEY'))
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -20,7 +20,7 @@ ALLOWED_HOSTS = ['doctorwork.herokuapp.com','3.132.212.116','localhost',"0.0.0.0
 # Application definition
 
 INSTALLED_APPS = [
-    #'whitenoise.runserver_nostatic',#this is add for server static pages in production because debug  is false
+   
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     "corsheaders",
     'rest_framework',
     'rest_framework.authtoken',
-    #'imagekit',
+   
     'drf_yasg',
     'job.apps.JobConfig',
     'AdminUser.apps.AdminuserConfig',
@@ -75,22 +75,22 @@ WSGI_APPLICATION = 'jobportal.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
-#postgres://fihwmzddheotyc:19669e0bca54337bbca17a87a7de9704cad97f5c00824631c4e0a43a43bdd4bb@ec2-54-173-77-184.compute-1.amazonaws.com:5432/d5jnph5sgdo6oe
+#postgres://xzjhiagvgvdwtx:b5c4d955aee7aadeadc67723c0a9a2b7331b71c608a4b4b7869506a0d435f9a7@ec2-54-160-109-68.compute-1.amazonaws.com:5432/ddoqbtk4ph7cti
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
     # 'default': {
-
-    #     'ENGINE': 'django.db.backends.postgresql_psycopg2',
-    #     'NAME':'d5jnph5sgdo6oe',
-    #     'USER': 'fihwmzddheotyc',
-    #     'PASSWORD': '19669e0bca54337bbca17a87a7de9704cad97f5c00824631c4e0a43a43bdd4bb',
-    #     'HOST': 'ec2-54-173-77-184.compute-1.amazonaws.com',
-    #     'PORT': '5432'
-
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
     # }
+    'default': {
+
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME':'ddoqbtk4ph7cti',
+        'USER': 'xzjhiagvgvdwtx',
+        'PASSWORD': 'b5c4d955aee7aadeadc67723c0a9a2b7331b71c608a4b4b7869506a0d435f9a7',
+        'HOST': 'ec2-54-160-109-68.compute-1.amazonaws',
+        'PORT': '5432'
+
+    }
 
 
     
