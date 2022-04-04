@@ -13,7 +13,7 @@ SECRET_KEY = get_random_secret_key()#str(os.getenv('SECRET_KEY'))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool( os.environ.get('DJANGO_DEBUG') )
 
-ALLOWED_HOSTS = ['localhost','3.132.212.116']
+ALLOWED_HOSTS = ['localhost','3.132.212.116','doctorwork.herokuapp.com']
 
 
 # Application definition
