@@ -1,8 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
-from imagekit.models import ImageSpecField,ProcessedImageField
+#from imagekit.models import ImageSpecField,ProcessedImageField
 from datetime import *
-from imagekit.processors import ResizeToFill
+#from imagekit.processors import ResizeToFill
 
 # Create your models here.
 class Identification(models.Model):
@@ -109,11 +109,11 @@ class Experience(models.Model):
 
 
 class Subject(models.Model):
-    #image=models.ImageField(upload_to='subject',null=True,blank=True)
-    image=ProcessedImageField(upload_to='subject',
-                                           processors=[ResizeToFill(150,150)],
-                                           format='JPEG',
-                                           options={'quality': 20},null=True,blank=True)
+    image=models.ImageField(upload_to='subject',null=True,blank=True)
+    # image=ProcessedImageField(upload_to='subject',
+    #                                        processors=[ResizeToFill(150,150)],
+    #                                        format='JPEG',
+    #                                        options={'quality': 20},null=True,blank=True)
     
     name=models.CharField(max_length=100)
     status=models.BooleanField(default=True)
