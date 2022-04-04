@@ -34,7 +34,8 @@ urlpatterns=[
         path('department',Add_Spec_Department.as_view()),
         path('designation',Add_Designation.as_view()),
         path('question',QuestionPost.as_view()),
-        path('hospital/type/<str:type>',HospitalTypePost.as_view())
+        
+        
     
 
     ])),
@@ -43,6 +44,8 @@ urlpatterns=[
         path('highlight/<int:id>',HospitalHighlights.as_view()),
         path('speciality/<int:id>',HospitalSpecialities.as_view()),
         path('information/',HospitalInformations.as_view()),
+        path('type/<str:type>',HospitalTypePost.as_view()),
+        path("info/<int:id>",HospitalAllInfo.as_view())
        
 
     ])),

@@ -188,10 +188,10 @@ class Category_Related_Job(models.Model):
     Speciality=models.CharField("consultent speciality",max_length=500,null=True)
     designation=models.CharField(max_length=100,null=True,db_column='consultent Designation')
     hosptial_name=models.CharField('Hospital name',max_length=500,null=True,blank=True,)
-    hospitail_image=ProcessedImageField(upload_to='Hospital image',
-                                           processors=[ResizeToFill(150,150)],
-                                           format='JPEG',
-                                           options={'quality': 20},null=True,blank=True)
+    # hospitail_image=ProcessedImageField(upload_to='Hospital image',
+    #                                        processors=[ResizeToFill(150,150)],
+    #                                        format='JPEG',
+    #                                        options={'quality': 20},null=True,blank=True)
     location=models.CharField('Job Location',max_length=100,null=True)
     #state=models.CharField("Job State",null=True,max_length=200)
     salary=models.CharField(max_length=250,null=True)
@@ -209,7 +209,7 @@ class Category_Related_Job(models.Model):
     
     hr_contact=models.CharField(max_length=20,null=True,default="1234567890")
     social_contact=models.CharField(max_length=20,null=True,default="0123456789")
-    top_job=models.BooleanField(default=False)
+    
     job_status=models.BooleanField(default=True)
     resion=models.CharField(max_length=2000,null=True,blank=True)
     likes=models.ManyToManyField(User,related_name="like",)
@@ -456,7 +456,8 @@ class City(models.Model):
     def __str__(self):
         return self.hospital_city_name
 
-
+class Banner(models.Model):
+    image=models.FileField(upload_to='banner/image',null=True)
 
 
     

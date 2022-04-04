@@ -2,16 +2,16 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
-# load_dotenv()
+from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 #TEMPLATE_DIR=os.path.join(BASE_DIR,'forntend/template')
 
-SECRET_KEY = str(os.getenv('SECRET_KEY'))
+SECRET_KEY = get_random_secret_key()#str(os.getenv('SECRET_KEY'))
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool( os.environ.get('DJANGO_DEBUG', True) )
+DEBUG = bool( os.environ.get('DJANGO_DEBUG') )
 
 ALLOWED_HOSTS = ['localhost','3.132.212.116']
 
@@ -19,7 +19,7 @@ ALLOWED_HOSTS = ['localhost','3.132.212.116']
 # Application definition
 
 INSTALLED_APPS = [
-    #'whitenoise.runserver_nostatic',#this is add for server static pages in production because debug  is false
+    'whitenoise.runserver_nostatic',#this is add for server static pages in production because debug  is false
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,7 +41,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     
     'django.middleware.security.SecurityMiddleware',
-    #'whitenoise.middleware.WhiteNoiseMiddleware',#this is white noise extra add in middleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',#this is white noise extra add in middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
@@ -76,20 +76,20 @@ WSGI_APPLICATION = 'jobportal.wsgi.application'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
     # 'default': {
-
-    #     'ENGINE': 'django.db.backends.postgresql_psycopg2',
-    #     'NAME':'testdb',
-    #     'USER': 'med',
-    #     'PASSWORD': 'sanjit@123',
-    #     'HOST': 'localhost',
-    #     'PORT': '5432'
-
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
     # }
+    'default': {
+
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME':'testdb',
+        'USER': 'med',
+        'PASSWORD': 'sanjit@123',
+        'HOST': 'localhost',
+        'PORT': '5432'
+
+    }
 
 
     
@@ -149,8 +149,18 @@ STATIC_ROOT=os.path.join(BASE_DIR,'static_dir')
 MEDIA_ROOT=os.path.join(BASE_DIR,'media_dir')
 
 
-STATICFILES_DIRS=[os.path.join(BASE_DIR,'forntend/static')]
+CSRF_COOKIE_SECURE=True
 
+SESSION_COOKIE_SECURE=True
+SECURE_SSL_REDIRECT = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_HSTS_SECONDS = 3600
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Default primary key field type

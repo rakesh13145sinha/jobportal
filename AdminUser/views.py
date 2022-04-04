@@ -7,6 +7,8 @@ from rest_framework import status
 from job.models import *
 from job.serializers import *
 from django.db.models import Q
+
+from job.views import hospitalinfo
 from .serializers import *
 from rest_framework.permissions import IsAdminUser
 from rest_framework.authentication import TokenAuthentication
@@ -816,7 +818,7 @@ class HospitalInformations(APIView):
             highlight=HospitalInfo.objects.get(id=hospitalid)
             serializers=HospitalInfoSerializers(highlight,many=False)
             return Response(serializers.data)
-        elif hospitalname is not None:
+        elif hospitalname is not None and location is None:
             highlight=HospitalInfo.objects.filter(name__startswith=hospitalname)
             serializers=HospitalInfoSerializers(highlight,many=True)
             return Response(serializers.data)
@@ -852,7 +854,17 @@ class HospitalInformations(APIView):
         HospitalInfo.objects.get(id=id).delete()
         return Response({"message":"Job related hospital highlight deleted"})
 
-
+class HospitalAllInfo(APIView):
+    def get(self,request,id):
+        hospital=HospitalInfo.objects.get(id=id)
+        banner=hospital.hospitalbanner_set.all()
+        highlight=hospital.hospitalhighlight_set.all()
+        speciality=hospital.hospitalspeciality_set.all()
+        serializers=HospitalInfoSerializers(hospital,many=False).data
+        serializers['banner']=[{"id":i.id,"image":i.file.url} for i in banner]
+        serializers['highlight']=[{"id":i.id,"title":i.title,"image":i.file.url} for i in highlight]
+        serializers['speciality']=[{"id":i.id,"title":i.title,"image":i.file.url} for i in speciality]
+        return Response(serializers,status=status.HTTP_200_OK)
 
 """HOSPITAL OVER"""
 class HospitalTypePost(APIView):

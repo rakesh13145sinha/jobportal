@@ -55,6 +55,7 @@ urlpatterns=[
                 path('poll/bookmarks',User_Poll_Bookmarks.as_view()),
                 path('question',GetQuestion.as_view()),
                 path('question/attempt',AttemptQuestions.as_view()),
+                
 
                
 
@@ -87,6 +88,7 @@ urlpatterns=[
                         path('category/name',CategoriesData.as_view()),
                         path('category/designation/<str:category>',CategoryDesignation.as_view()),
                         path('search/',SearchLocationDepartment.as_view()),
+                        path('banner',BannerMultiimage.as_view())
                         
                         
                         ])),

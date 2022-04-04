@@ -20,7 +20,7 @@ from django.db.models import Count
 from functools import partial, reduce
 from rest_framework.parsers import FileUploadParser
 from AdminUser.models import Question,AtteptQuestion
-from AdminUser.serializers import QuestionSerializers,AtteptQuestionSerializers,HospitalBanner
+from AdminUser.serializers import HospitalInfoSerializers, QuestionSerializers,AtteptQuestionSerializers,HospitalBanner
 from listdata.collegedata import *
 """REGISTRATION LOGIN LOGOUT AND RESEND OTP API START HERE"""
 
@@ -1379,7 +1379,21 @@ class Category(APIView):
         job_category=Job_By_Category.objects.all()
         return Response(Job_By_CategorySerializers(job_category,many=True).data,status=200)
     
-    
+"""Hospital data"""  
+def hospitalinfo(name,location):
+    # try:
+    hospital=HospitalInfo.objects.get(name__iexact=name,location__iexact=location)
+    banner=hospital.hospitalbanner_set.all()
+    highlight=hospital.hospitalhighlight_set.all()
+    speciality=hospital.hospitalspeciality_set.all()
+    serializers=HospitalInfoSerializers(hospital,many=False).data
+    serializers['banner']=[{"id":i.id,"image":i.file.url} for i in banner]
+    serializers['highlight']=[{"id":i.id,"title":i.title,"image":i.file.url} for i in highlight]
+    serializers['speciality']=[{"id":i.id,"title":i.title,"image":i.file.url} for i in speciality]
+    # except Exception as e:
+    #     return Response({"message":str(e)})
+    return serializers
+
     
 '''api/new/job/'''
 '''new job post'''
@@ -1406,6 +1420,7 @@ class JobPost(APIView):
             
             try:
                 jobid=Category_Related_Job.objects.get(id=new_job_id)
+                
             except Exception as e:
                 return Response({"message":"job not exists","exception":str(e)},status=404) 
             
@@ -1414,6 +1429,8 @@ class JobPost(APIView):
             serializer["bookmark"]=jobid.bookmark.filter(id=user.id).exists()
             serializer["likes"]=jobid.likes.filter(id=user.id).exists()
             serializer["apply_status"]=jobid.applicant.filter(id=user.id).exists()
+            serializer["hopitla"]=hospitalinfo(jobid.hosptial_name,jobid.location)
+
             return Response(serializer,status=200)  
         
         elif categoryId is not None and username_id is not None:
@@ -2668,241 +2685,239 @@ class Complaint_Comment(APIView):
 
 class ComplaintAndPolls(APIView):
     def get(self,request):
-        return Response({"message":"hello django"})
-        # response={}
+        
+        response={}
+        pagerequest=request.GET.get('page')
+        username_id=request.GET.get('user_id')
+        polls=Poll.objects.values('created_date')
+        complaints=Complaint.objects.values('created_date')
+        NewArtical=Articals.objects.values('created_date')
+        question=Question.objects.values('created_date')
+        newsartical=NewsArticalPost.objects.values('created_date')
        
-        # pagerequest=request.GET.get('page')
-
-        # username_id=request.GET.get('user_id')
-
-        # polls=Poll.objects.values('created_date')
-        # complaints=Complaint.objects.values('created_date')
-        # NewArtical=Articals.objects.values('created_date')
-        # question=Question.objects.values('created_date')
-        # newsartical=NewsArticalPost.objects.values('created_date')
-       
-        # fivejoin=polls.union(complaints,NewArtical,question,newsartical).order_by('-created_date')
-        # pageitem = Paginator(list(fivejoin), 5) 
-        # requestpage=pageitem.page(int(pagerequest)) 
+        fivejoin=polls.union(complaints,NewArtical,question,newsartical).order_by('-created_date')
+        pageitem = Paginator(list(fivejoin), 5) 
+        requestpage=pageitem.page(int(pagerequest)) 
        
         
         
-        # user=get_object_or_404(User,id=username_id)
+        user=get_object_or_404(User,id=username_id)
         
         
         
-        # for i in range(len(requestpage.object_list)):
-        #     try:
-        #         poll=Poll.objects.get(created_date=requestpage.object_list[i]['created_date'])
-            
+        for i in range(len(requestpage.object_list)):
+            try:
+                poll=Poll.objects.prefetch_related("likes","bookmark").get(created_date=requestpage.object_list[i]['created_date'])
+                
+                
            
             
                 
-        #         serializer=PollVoteSerializers(poll,many=False).data
-        #         poll_pro=Profile.objects.select_related('contact').get(contact__userdetail__id=poll.poll_user.id)
+                serializer=PollVoteSerializers(poll,many=False).data
+                poll_pro=Profile.objects.select_related('contact').get(contact__userdetail__id=poll.poll_user.id)
                 
-        #         poll_profile={  
-        #                         "userid":poll.poll_user.id,
-        #                         "ProfileName":poll_pro.contact.profile_name,
-        #                         "ProfileImage":poll_pro.profileImage.url if poll_pro.profileImage else "no image",
-        #                         "speciality":poll_pro.contact.speciality,
-        #                         "location":poll_pro.contact.current_job_location
-        #                     }
-        #         serializer.update(poll_profile)
+                poll_profile={  
+                                "userid":poll.poll_user.id,
+                                "ProfileName":poll_pro.contact.profile_name,
+                                "ProfileImage":poll_pro.profileImage.url if poll_pro.profileImage else "no image",
+                                "speciality":poll_pro.contact.speciality,
+                                "location":poll_pro.contact.current_job_location
+                            }
+                serializer.update(poll_profile)
                 
-        #         find_existing_voter_or_not=PollVote.objects.select_related('poll','profile').filter(poll_id__id=poll.id,profile__id=user.id)
+                find_existing_voter_or_not=PollVote.objects.select_related('poll','profile').filter(poll_id__id=poll.id,profile__id=user.id)
                 
 
-        #         tvote=poll.pollvote_set.count()
+                tvote=poll.pollvote_set.count()
 
-        #         vote=PollVote.objects.aggregate(
-        #                 # TOTAL=Count(filter=Q(poll_id=poll)),
-        #                 A=Count('pk', filter=Q(poll_id=poll,choice="A")),
-        #                 B=Count('pk', filter=Q(poll_id=poll,choice="B")),
-        #                 C=Count('pk', filter=Q(poll_id=poll,choice="C")),
-        #                 D=Count('pk', filter=Q(poll_id=poll,choice="D"))
+                vote=PollVote.objects.aggregate(
+                        # TOTAL=Count(filter=Q(poll_id=poll)),
+                        A=Count('pk', filter=Q(poll_id=poll,choice="A")),
+                        B=Count('pk', filter=Q(poll_id=poll,choice="B")),
+                        C=Count('pk', filter=Q(poll_id=poll,choice="C")),
+                        D=Count('pk', filter=Q(poll_id=poll,choice="D"))
 
-        #                                 )
+                                        )
     
                 
 
-        #         if user.id != poll_pro.contact.userdetail.id:
-        #             follow=poll_pro.follow.filter(id=user.id).exists()
-        #         else:
-        #             follow="uploader"
+                if user.id != poll_pro.contact.userdetail.id:
+                    follow=poll_pro.follow.filter(id=user.id).exists()
+                else:
+                    follow="uploader"
                 
 
-        #         like=poll.likes.filter(id=user.id)
+                like=poll.likes.filter(id=user.id)
 
-        #         poll_comment=PollComment.objects.filter(poll_id__id=poll.id)
+                poll_comment=PollComment.objects.filter(poll_id__id=poll.id)
 
 
-        #         bookmark=poll.bookmark.filter(id=user.id)
-        #         serializer["SS_NEET"]= False
-        #         serializer["PG_NEET"]= False 
-        #         serializer["newsartical"]= False 
+                bookmark=poll.bookmark.filter(id=user.id)
+                serializer["SS_NEET"]= False
+                serializer["PG_NEET"]= False 
+                serializer["newsartical"]= False 
                
-        #         serializer.update({
-        #                         "bookmark_status":bookmark.exists(),
-        #                         "bookmark_count":poll.bookmark.all().count(),
-        #                         "like_status":like.exists(),
-        #                         "like_count":poll.likes.all().count(),
-        #                         "follow":str(follow),
-        #                         "complaint_status":False,
-        #                         "art_status":False,
-        #                         "votes":poll.pollvote_set.count(),
-        #                         "likes":poll.likes.all().count(),
-        #                         "user_status":find_existing_voter_or_not.exists(),
-        #                         "vote":tvote,
-        #                         "A": vote["A"] if vote["A"]==0 else int((vote["A"]/tvote)*100 ),
-        #                         "B": vote["B"] if vote["B"]==0 else int((vote["B"]/tvote)*100),
-        #                         "C": vote["C"] if vote["C"]==0 else int((vote["C"]/tvote)*100),
-        #                         "D": vote["D"] if vote["D"]==0 else int((vote["D"]/tvote)*100),
-        #                         "choice":find_existing_voter_or_not[0].choice if find_existing_voter_or_not.exists() else "no_opinion" ,
-        #                         "discussion":poll_comment.count()
+                serializer.update({
+                                "bookmark_status":bookmark.exists(),
+                                "bookmark_count":poll.bookmark.all().count(),
+                                "like_status":like.exists(),
+                                "like_count":poll.likes.all().count(),
+                                "follow":str(follow),
+                                "complaint_status":False,
+                                "art_status":False,
+                                "votes":poll.pollvote_set.count(),
+                                "likes":poll.likes.all().count(),
+                                "user_status":find_existing_voter_or_not.exists(),
+                                "vote":tvote,
+                                "A": vote["A"] if vote["A"]==0 else int((vote["A"]/tvote)*100 ),
+                                "B": vote["B"] if vote["B"]==0 else int((vote["B"]/tvote)*100),
+                                "C": vote["C"] if vote["C"]==0 else int((vote["C"]/tvote)*100),
+                                "D": vote["D"] if vote["D"]==0 else int((vote["D"]/tvote)*100),
+                                "choice":find_existing_voter_or_not[0].choice if find_existing_voter_or_not.exists() else "no_opinion" ,
+                                "discussion":poll_comment.count()
                    
-        #                         })
+                                })
                 
-        #         response[datetime.now()]=serializer
-        #     except Exception as e:
-        #         pass
-        #     try:
-        #         complaint=Complaint.objects.get(created_date=requestpage.object_list[i]['created_date'])
+                response[datetime.now()]=serializer
+            except Exception as e:
+                pass
+            try:
+                complaint=Complaint.objects.get(created_date=requestpage.object_list[i]['created_date'])
            
             
-        #         serializer1=CaseSerializers(complaint,many=False).data
-        #         complaint_profile=Profile.objects.select_related('contact').get(contact__userdetail__id=complaint.complaint.id)
-        #         case_profile={
-        #                     "userid":complaint.complaint.id,
-        #                     "ProfileName":complaint_profile.contact.profile_name,
-        #                     "ProfileImage":complaint_profile.profileImage.url if complaint_profile.profileImage else "no image",
-        #                     "speciality":complaint_profile.contact.speciality,
-        #                     "location":complaint_profile.contact.current_job_location
-        #                     }
+                serializer1=CaseSerializers(complaint,many=False).data
+                complaint_profile=Profile.objects.select_related('contact').get(contact__userdetail__id=complaint.complaint.id)
+                case_profile={
+                            "userid":complaint.complaint.id,
+                            "ProfileName":complaint_profile.contact.profile_name,
+                            "ProfileImage":complaint_profile.profileImage.url if complaint_profile.profileImage else "no image",
+                            "speciality":complaint_profile.contact.speciality,
+                            "location":complaint_profile.contact.current_job_location
+                            }
                 
-        #         serializer1.update(case_profile)
+                serializer1.update(case_profile)
 
-        #         discussion=Discussions.objects.select_related('case','profile').filter(case_id__id=complaint.id)
-        #         if user.id != complaint_profile.contact.userdetail.id:
-        #             follow=complaint_profile.follow.filter(id=user.id).exists()
-        #         else:
-        #             follow="uploader"
+                discussion=Discussions.objects.select_related('case','profile').filter(case_id__id=complaint.id)
+                if user.id != complaint_profile.contact.userdetail.id:
+                    follow=complaint_profile.follow.filter(id=user.id).exists()
+                else:
+                    follow="uploader"
                
-        #         like=complaint.likes.filter(id=user.id)
-        #         bookmark=complaint.bookmark.filter(id=user.id)
-        #         serializer1['bookmark_status']=bookmark.exists()
-        #         serializer1['bookmark_count']=complaint.bookmark.count()
-        #         serializer1['like_status']=like.exists()
-        #         serializer1['like_count']=complaint.likes.count()
-        #         serializer1['discussion']=discussion.count()
-        #         serializer1['follow']=str(follow)
-        #         serializer1['poll_status']=bookmark.exists()
-        #         serializer1['art_status']=bookmark.exists()
-        #         serializer1["SS_NEET"]= False
-        #         serializer1["PG_NEET"]= False 
-        #         serializer1["newsartical"]= False 
+                like=complaint.likes.filter(id=user.id)
+                bookmark=complaint.bookmark.filter(id=user.id)
+                serializer1['bookmark_status']=bookmark.exists()
+                serializer1['bookmark_count']=complaint.bookmark.count()
+                serializer1['like_status']=like.exists()
+                serializer1['like_count']=complaint.likes.count()
+                serializer1['discussion']=discussion.count()
+                serializer1['follow']=str(follow)
+                serializer1['poll_status']=bookmark.exists()
+                serializer1['art_status']=bookmark.exists()
+                serializer1["SS_NEET"]= False
+                serializer1["PG_NEET"]= False 
+                serializer1["newsartical"]= False 
                 
 
-        #         response[datetime.now()]=serializer1
-        #     except Exception as e:
-        #         pass
-        #     try: 
-        #         artical=Articals.objects.get(created_date=requestpage.object_list[i]['created_date'])
+                response[datetime.now()]=serializer1
+            except Exception as e:
+                pass
+            try: 
+                artical=Articals.objects.get(created_date=requestpage.object_list[i]['created_date'])
             
-        #         serializer2=ArticalSerializers(artical,many=False).data
+                serializer2=ArticalSerializers(artical,many=False).data
                
-        #         artical_profile=Profile.objects.get(contact__userdetail__id=artical.user.id)
-        #         case_profile={
-        #                         "userid":artical.user.id,
-        #                         "ProfileName":artical_profile.contact.profile_name,
-        #                         "ProfileImage":artical_profile.profileImage.url if artical_profile.profileImage else "no image",
-        #                         "speciality":artical_profile.contact.speciality,
-        #                         "location":artical_profile.contact.current_job_location
-        #                     }
-        #         serializer2.update(case_profile)
+                artical_profile=Profile.objects.get(contact__userdetail__id=artical.user.id)
+                case_profile={
+                                "userid":artical.user.id,
+                                "ProfileName":artical_profile.contact.profile_name,
+                                "ProfileImage":artical_profile.profileImage.url if artical_profile.profileImage else "no image",
+                                "speciality":artical_profile.contact.speciality,
+                                "location":artical_profile.contact.current_job_location
+                            }
+                serializer2.update(case_profile)
 
-        #         if user.id != artical_profile.contact.userdetail.id:
-        #             follow=artical_profile.follow.filter(id=user.id).exists()
-        #         else:
-        #             follow="uploader"
+                if user.id != artical_profile.contact.userdetail.id:
+                    follow=artical_profile.follow.filter(id=user.id).exists()
+                else:
+                    follow="uploader"
 
-        #         artical_comment=artical.articalcomment_set.all().count()
-        #         #follow=artical_profile.follow.filter(id=user.id)
-        #         like=artical.likes.filter(id=user.id)
-        #         bookmark=artical.bookmark.filter(id=user.id)
-        #         serializer2["SS_NEET"]= False
-        #         serializer2["PG_NEET"]= False 
-        #         serializer2["complaint_status"]= False
-        #         serializer2["poll_status"]= False 
-        #         serializer2["discussion"]= artical_comment
-        #         serializer2["follow"]= str(follow)
-        #         serializer2["like_count"]= artical.likes.count()
-        #         serializer2["like_status"]= like.exists()
-        #         serializer2["art_status"]=True
-        #         serializer2["bookmark_status"]= bookmark.exists()
-        #         serializer2["bookmark_count"]= artical.bookmark.all().count()
-        #         serializer2["newsartical"]= False
+                artical_comment=artical.articalcomment_set.all().count()
+                #follow=artical_profile.follow.filter(id=user.id)
+                like=artical.likes.filter(id=user.id)
+                bookmark=artical.bookmark.filter(id=user.id)
+                serializer2["SS_NEET"]= False
+                serializer2["PG_NEET"]= False 
+                serializer2["complaint_status"]= False
+                serializer2["poll_status"]= False 
+                serializer2["discussion"]= artical_comment
+                serializer2["follow"]= str(follow)
+                serializer2["like_count"]= artical.likes.count()
+                serializer2["like_status"]= like.exists()
+                serializer2["art_status"]=True
+                serializer2["bookmark_status"]= bookmark.exists()
+                serializer2["bookmark_count"]= artical.bookmark.all().count()
+                serializer2["newsartical"]= False
                 
-        #         response[datetime.now()]=serializer2
-        #     except Exception as e:
-        #         pass 
-        #     try:
-        #         question=Question.objects.get(created_date=requestpage.object_list[i]['created_date'])
+                response[datetime.now()]=serializer2
+            except Exception as e:
+                pass 
+            try:
+                question=Question.objects.get(created_date=requestpage.object_list[i]['created_date'])
            
-        #         serializer=QuestionSerializers(question,many=False).data
-        #         serializer["ProfileImage"]=question.ProfileImage.url if question.ProfileImage  else "no image"
-        #         serializer["complaint_status"]=False 
-        #         serializer["poll_status"]=False 
-        #         serializer["art_status"]=False 
-        #         serializer["SS_NEET"]=True if question.exam=="SS-NEET" else False
-        #         serializer["PG_NEET"]=True if question.exam=="PG-NEET" else False 
-        #         serializer["newsartical"]= False
-        #         try:
-        #             attemptquestion=question.atteptquestion_set.get(user=user,question=question) 
-        #             serializer['selected_option']=attemptquestion.selected_option
-        #             serializer['answer_status']=attemptquestion.answer_status
-        #         except Exception as e:
-        #             serializer['selected_option']=None
-        #             serializer['answer_status']=False
-        #         response[datetime.now()]=serializer
-        #     except Exception as e:
-        #         pass 
+                serializer=QuestionSerializers(question,many=False).data
+                serializer["ProfileImage"]=question.ProfileImage.url if question.ProfileImage  else "no image"
+                serializer["complaint_status"]=False 
+                serializer["poll_status"]=False 
+                serializer["art_status"]=False 
+                serializer["SS_NEET"]=True if question.exam=="SS-NEET" else False
+                serializer["PG_NEET"]=True if question.exam=="PG-NEET" else False 
+                serializer["newsartical"]= False
+                try:
+                    attemptquestion=question.atteptquestion_set.get(user=user,question=question) 
+                    serializer['selected_option']=attemptquestion.selected_option
+                    serializer['answer_status']=attemptquestion.answer_status
+                except Exception as e:
+                    serializer['selected_option']=None
+                    serializer['answer_status']=False
+                response[datetime.now()]=serializer
+            except Exception as e:
+                pass 
             
-        #     try:
-        #         artical=NewsArticalPost.objects.get(created_date=requestpage.object_list[i]['created_date'])
+            try:
+                artical=NewsArticalPost.objects.get(created_date=requestpage.object_list[i]['created_date'])
            
             
-        #         serializer=NewsArticalSerializers(artical,many=False).data
+                serializer=NewsArticalSerializers(artical,many=False).data
                 
-        #         try:
-        #             profile=Profile.objects.select_related('contact').get(contact__userdetail__id=artical.userid.id)
-        #         except Exception as e:
-        #             pass
-        #         else:
-        #             serializer.update({
-        #                 "ProfileName":profile.contact.profile_name,
-        #                 "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
-        #                 "speciality":profile.contact.speciality if profile.contact.speciality is not None else "notfilled",
-        #                 "location":profile.contact.current_job_location
-        #             })
-        #             serializer.update({
-        #                 "bookmark_status":artical.bookmark.filter(id=user.id).exists(),
-        #                 "bookmark_count":artical.bookmark.all().count(),
-        #                 "like_status":artical.likes.filter(id=user.id).exists(),
-        #                 "like_count":artical.likes.all().count(),
-        #                 "follow":profile.follow.filter(id=user.id).exists()
+                try:
+                    profile=Profile.objects.select_related('contact').get(contact__userdetail__id=artical.userid.id)
+                except Exception as e:
+                    pass
+                else:
+                    serializer.update({
+                        "ProfileName":profile.contact.profile_name,
+                        "ProfileImage":profile.profileImage.url if profile.profileImage else "no image",
+                        "speciality":profile.contact.speciality if profile.contact.speciality is not None else "notfilled",
+                        "location":profile.contact.current_job_location
+                    })
+                    serializer.update({
+                        "bookmark_status":artical.bookmark.filter(id=user.id).exists(),
+                        "bookmark_count":artical.bookmark.all().count(),
+                        "like_status":artical.likes.filter(id=user.id).exists(),
+                        "like_count":artical.likes.all().count(),
+                        "follow":profile.follow.filter(id=user.id).exists()
                         
-        #                 })
-        #             serializer["complaint_status"]=False 
-        #             serializer["poll_status"]=False 
-        #             serializer["art_status"]=False 
-        #             serializer["SS_NEET"]= False
-        #             serializer["PG_NEET"]= False 
-        #             serializer["newsartical"]= True
-        #             response[datetime.now()]=serializer
-        #     except Exception as e:
-        #         pass 
-        # return Response(response.values())
+                        })
+                    serializer["complaint_status"]=False 
+                    serializer["poll_status"]=False 
+                    serializer["art_status"]=False 
+                    serializer["SS_NEET"]= False
+                    serializer["PG_NEET"]= False 
+                    serializer["newsartical"]= True
+                    response[datetime.now()]=serializer
+            except Exception as e:
+                pass 
+        return Response(response.values())
 
 
 
@@ -2936,9 +2951,9 @@ class ComplaintAndPoll(APIView):
         for i in range(len(requestpage.object_list)):
 
             try:
-                poll=Poll.objects.select_related("poll_user").get(created_date=requestpage.object_list[i]['created_date'])
+                poll=Poll.objects.select_related("poll_user").filter(created_date=requestpage.object_list[i]['created_date']).prefetch_related("likes","bookmark").get()
                 serializer=PollVoteSerializers(poll,many=False).data
-                poll_pro=Profile.objects.select_related('contact').get(contact__userdetail__id=poll.poll_user.id)
+                poll_pro=Profile.objects.select_related('contact__userdetail').get(contact__userdetail__id=poll.poll_user.id)
                 
                 poll_profile={  
                                 "userid":poll.poll_user.id,
@@ -3009,9 +3024,9 @@ class ComplaintAndPoll(APIView):
                 
 
             try:
-                complaint=Complaint.objects.select_related("complaint"). get(created_date=requestpage.object_list[i]['created_date'])
+                complaint=Complaint.objects.select_related("complaint").filter(created_date=requestpage.object_list[i]['created_date']).prefetch_related("likes","bookmark").get()
                 serializer1=CaseSerializers(complaint,many=False).data
-                complaint_profile=Profile.objects.select_related('contact').get(contact__userdetail__id=complaint.complaint.id)
+                complaint_profile=Profile.objects.select_related('contact__userdetail').get(contact__userdetail__id=complaint.complaint.id)
                 case_profile={
                             "userid":complaint.complaint.id,
                             "ProfileName":complaint_profile.contact.profile_name,
@@ -3050,10 +3065,10 @@ class ComplaintAndPoll(APIView):
             
                 
             try:
-                artical=Articals.objects.select_related("user"). get(created_date=requestpage.object_list[i]['created_date'])
+                artical=Articals.objects.select_related("user"). filter(created_date=requestpage.object_list[i]['created_date']).prefetch_related("likes","bookmark").get()
                 serializer2=ArticalSerializers(artical,many=False).data
                
-                artical_profile=Profile.objects.select_related("contact").get(contact__userdetail__id=artical.user.id)
+                artical_profile=Profile.objects.select_related("contact__userdetail").get(contact__userdetail__id=artical.user.id)
                 case_profile={
                                 "userid":artical.user.id,
                                 "ProfileName":artical_profile.contact.profile_name,
@@ -3069,7 +3084,7 @@ class ComplaintAndPoll(APIView):
                     follow="uploader"
 
                 artical_comment=artical.articalcomment_set.all().count()
-                #follow=artical_profile.follow.filter(id=user.id)
+                
                 like=artical.likes.filter(id=user.id)
                 bookmark=artical.bookmark.filter(id=user.id)
                 serializer2["SS_NEET"]= False
@@ -3091,7 +3106,7 @@ class ComplaintAndPoll(APIView):
            
                 
             try:
-                question=Question.objects.filter(created_date=requestpage.object_list[i]['created_date'])
+                question=Question.objects.get(created_date=requestpage.object_list[i]['created_date'])
                 serializer=QuestionSerializers(question,many=False).data
                 serializer["ProfileImage"]=question.ProfileImage.url if question.ProfileImage  else "no image"
                 serializer["complaint_status"]=False 
@@ -3114,14 +3129,9 @@ class ComplaintAndPoll(APIView):
                 
             
             try:
-                artical=NewsArticalPost.objects.select_related("userid").get(created_date=requestpage.object_list[i]['created_date'])
+                artical=NewsArticalPost.objects.select_related("userid").filter(created_date=requestpage.object_list[i]['created_date']).prefetch_related("likes","bookmark").get()
                 serializer=NewsArticalSerializers(artical,many=False).data
-                
-                
-                
-                profile=Profile.objects.select_related('contact').get(contact__userdetail__id=artical.userid.id)
-                
-                
+                profile=Profile.objects.select_related('contact__userdetail').get(contact__userdetail__id=artical.userid.id)
                 serializer["ProfileName"]=profile.contact.profile_name
                 serializer["ProfileImage"]=profile.profileImage.url if profile.profileImage else "no image"
                 serializer["speciality"]=profile.contact.speciality if profile.contact.speciality is not None else "notfilled"
@@ -3143,11 +3153,6 @@ class ComplaintAndPoll(APIView):
             except Exception as e:
                 pass
            
-            
-                
-       
-        
-       
         return Response(response.values())
 
 
@@ -3440,6 +3445,12 @@ class HospitlMultiimage(APIView):
         pass 
     
 
+class BannerMultiimage(APIView):
+    
+    def get(self,request):
+        serializers=BannerSerializer(Banner.objects.all(),many=True)
+        return Response(serializers.data)
+    
 
 
 

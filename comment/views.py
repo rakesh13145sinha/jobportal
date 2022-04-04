@@ -76,7 +76,7 @@ class AnswerSubmit(APIView):
 		questiionId=request.GET.get('question_id')
 		data=request.data
 		Answer.objects.create(profile=get_profile(username_id),question=get_object_or_404(Question,id=questiionId),comment=data['comment'])
-		return Response({"message":"replay posted","status":"true"},status=status.HTTP_200_OK)
+		return Response({"message":"replay posted","status":True},status=status.HTTP_200_OK)
 
 class QuestionLike(APIView):
     def post(self,request):
@@ -86,11 +86,11 @@ class QuestionLike(APIView):
        
         if flag:
                 question.like.remove(get_object_or_404(User,id=username_id))
-                return Response({"like":"false"})
+                return Response({"like":False})
         else:
                 question.like.add(get_object_or_404(User,id=username_id))
-                return Response({"like":"true"})
-        return Response({"message":"something issue"})
+                return Response({"like":True})
+        
 
 class AnswerLike(APIView):
     def post(self,request):
@@ -99,11 +99,10 @@ class AnswerLike(APIView):
         flag=answer.like.filter(id=username_id).exists()
         if flag:
                 answer.like.remove(get_object_or_404(User,id=username_id))
-                return Response({"like":"false"})
+                return Response({"like":False})
         else:
                 answer.like.add(get_object_or_404(User,id=username_id))
-                return Response({"like":"true"})
-        return Response({"message":"something issue"})
-
+                return Response({"like":True})
+        
 
 
