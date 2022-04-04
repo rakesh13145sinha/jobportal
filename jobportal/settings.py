@@ -13,13 +13,13 @@ SECRET_KEY = get_random_secret_key()#str(os.getenv('SECRET_KEY'))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = bool( os.environ.get('DJANGO_DEBUG') )
 
-ALLOWED_HOSTS = ['localhost','3.132.212.116','doctorwork.herokuapp.com']
+ALLOWED_HOSTS = ['doctorwork.herokuapp.com','3.132.212.116','localhost']
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'whitenoise.runserver_nostatic',#this is add for server static pages in production because debug  is false
+    #'whitenoise.runserver_nostatic',#this is add for server static pages in production because debug  is false
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -75,7 +75,7 @@ WSGI_APPLICATION = 'jobportal.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-# DATABASES = {
+#DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.sqlite3',
 #         'NAME': BASE_DIR / 'db.sqlite3',
