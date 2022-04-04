@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from django.core.management.utils import get_random_secret_key
-
+import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 #TEMPLATE_DIR=os.path.join(BASE_DIR,'forntend/template')
 
@@ -75,26 +75,26 @@ WSGI_APPLICATION = 'jobportal.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
-    'default': {
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+#     'default': {
 
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME':'testdb',
-        'USER': 'med',
-        'PASSWORD': 'sanjit@123',
-        'HOST': 'localhost',
-        'PORT': '5432'
+#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
+#         'NAME':'testdb',
+#         'USER': 'med',
+#         'PASSWORD': 'sanjit@123',
+#         'HOST': 'localhost',
+#         'PORT': '5432'
 
-    }
+#     }
 
 
     
-}
-
+# }
+DATABASES={"default":dj_database_url.config(default="postgres://med:sanjit@123@localhos/testdb")}
 
 
 # Password validation
