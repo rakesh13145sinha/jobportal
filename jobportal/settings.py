@@ -74,27 +74,27 @@ WSGI_APPLICATION = 'jobportal.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
+#postgres://fihwmzddheotyc:19669e0bca54337bbca17a87a7de9704cad97f5c00824631c4e0a43a43bdd4bb@ec2-54-173-77-184.compute-1.amazonaws.com:5432/d5jnph5sgdo6oe
+DATABASES = {
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
+    # }
+    'default': {
 
-#DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-#     'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME':'d5jnph5sgdo6oe',
+        'USER': 'fihwmzddheotyc',
+        'PASSWORD': '19669e0bca54337bbca17a87a7de9704cad97f5c00824631c4e0a43a43bdd4bb',
+        'HOST': 'ec2-54-173-77-184.compute-1.amazonaws.com',
+        'PORT': '5432'
 
-#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#         'NAME':'testdb',
-#         'USER': 'med',
-#         'PASSWORD': 'sanjit@123',
-#         'HOST': 'localhost',
-#         'PORT': '5432'
-
-#     }
+    }
 
 
     
-# }
-DATABASES={"default":dj_database_url.config(default="postgres://med:sanjit@123@localhos/testdb")}
+}
+#DATABASES={"default":dj_database_url.config(default="postgres://med:sanjit@123@localhos/testdb")}
 
 
 # Password validation
