@@ -8,7 +8,7 @@ import django_heroku
 BASE_DIR = Path(__file__).resolve().parent.parent
 #TEMPLATE_DIR=os.path.join(BASE_DIR,'forntend/template')
 
-SECRET_KEY = get_random_secret_key()#str(os.getenv('SECRET_KEY'))
+SECRET_KEY =str(os.getenv('SECRET_KEY')) #get_random_secret_key()#str(os.getenv('SECRET_KEY'))
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
